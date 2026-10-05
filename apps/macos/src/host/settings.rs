@@ -343,6 +343,30 @@ impl Host {
             (Setting::CloudEnabled, SettingValue::Bool(on)) => {
                 self.settings.set_bool("predict", "enabled", on);
             }
+            (Setting::CloudChineseWords, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict", "chinese_words", on);
+            }
+            (Setting::CloudEnglishWords, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict", "english_words", on);
+            }
+            (Setting::CloudGloss, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict.gloss", "enabled", on);
+            }
+            (Setting::CloudTranslation, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict.translation", "enabled", on);
+            }
+            (Setting::CloudGlossChannel, SettingValue::Index(index)) => {
+                if let Some(channel) = qingjian_predict::TranslationChannel::ALL.get(index) {
+                    self.settings
+                        .set_value("predict.gloss", "channel", channel.key());
+                }
+            }
+            (Setting::CloudTranslationChannel, SettingValue::Index(index)) => {
+                if let Some(channel) = qingjian_predict::TranslationChannel::ALL.get(index) {
+                    self.settings
+                        .set_value("predict.translation", "channel", channel.key());
+                }
+            }
             (Setting::CloudSentence, SettingValue::Bool(on)) => {
                 self.settings.set_bool("predict", "sentence", on);
             }

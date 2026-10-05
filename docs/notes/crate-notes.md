@@ -83,6 +83,9 @@ TSV 解析、查询与生成工具把 `lue` / `nue` 统一成 `lve` / `nve`。
 
 ## crates/qingjian-predict
 
+- 预测提示按语言与实际任务组装：空的本地提示不附解释，结构只由动态 schema 描述；场景仅作背景。中文整句始终中文，无可靠补全返回 null；schema 嵌入 system，接口保留 JSON Object 模式以兼容服务商。选区翻译遵循 Core 目标语言（zh/en/ja/es），不由模型反转方向；释义补全允许省略不可靠的词，避免猜测结果落盘。
+
+- `[predict] chinese_words`（默认开）/ `english_words`（默认关）分别控制中英文词候选，`slots = 0` 不请求词；同一语言词与句均关闭时不发预测请求。
 - `[predict] sentence` / `english_sentence` 分别控制中文 / 英文整句补全（默认均开启），`PredictionPolicy` 在 Core 发请求时分别检查，服务客户端与场景配置共用。
 - `[predict] scenarios_enabled` 默认关闭，`scenarios` 保存用户填写的场景（逗号 / 分号 / 换行分隔、去空去重）；仅 Compose / English 请求在用户 JSON 中带 `user_scenarios`，系统提示要求输入与即时上下文优先。客户端配置变化时与缓存一起重建，问字 / 翻译 / 释义不带场景。
 - `CloudPredictor`：`Predictor` trait 的网络实现（async-openai，OpenAI 兼容接口，默认 DeepSeek），后台线程防抖 / 缓存 / 超时，`submit` / `poll` 非阻塞。
@@ -90,13 +93,14 @@ TSV 解析、查询与生成工具把 `lue` / `nue` 统一成 `lve` / `nve`。
   前面的本地候选不挪；排布在 Core `CandidateLayout`）和整句补全（preedit 右侧，Tab）；上屏后不联想，本地历史不进请求。
   简拼（半数以上音节是缩写）的请求 `max_items = 0`，只求整句补全（`prediction::mostly_abbreviated`）：按声母凑出来的词大多是生造词，
   拼音校验又按首字母序列匹配放行缩写，拦不住；问字模式的答案不受这条限制。
-- 提示词按任务裁剪：中文联想只带所需的选词 / 补句规则，英文补全只发 `letters/before/after`；空上下文与本地提示省略，缺省为空。
+- `prompt/chinese` 与 `prompt/english` 是两套独立提示词；按 `max_items` / `want_sentence` 拼任务规则，`prompt/schema` 只要求启用任务的回复字段，schema 写进提示词，接口仍用兼容面更广的 JSON object 模式。用户 JSON 省略未使用的本地提示和条数；英文词无拼音，Core 校验单词前缀并适配大小写。
   每次只发 system + user，不携带会话历史；联想与释义客户端在 debug 日志记录响应 `usage`（服务商提供时），用于观察实际 token 消耗。
 - `CloudGlossFiller`：释义兜底（Core `GlossFiller` trait，与 Predictor 分开的线程与通道，攒 1.5 秒 / 8 个词发一次，问过不再问）：
   随包释义表没有的词库词 / 云端词上屏后入队，结果壳每秒 `Engine::poll_glosses` 经 `Translator::learn` 写进 `qingjian-translate::PersonalGlossary`
-  （`user-glossary-<语言>.tsv`，`LayeredTranslator` 个人表优先）；随云联想开关一起开。
+  （`user-glossary-<语言>.tsv`，`LayeredTranslator` 个人表优先）；由 `[predict.gloss] enabled/channel` 独立配置，`build_gloss_filler` 按渠道装配。
 - 问字键（缺省 `u`）开头是问字模式（`PredictionKind::Question`，答案带读音、不校验拼音），`?` 开头要 `ModeKeys::question_mark` 开着才算（配置 `[shortcut] question_mark`，缺省关，壳用 `Engine::takes_question_mark` 决定空缓冲区的 `?` 是入口还是标点）；`PredictionKind::Translate` 是壳里快捷键触发的「翻译选中文字」
   （双向：汉字为主译成学习语言，外文译回中文，`prediction::translation_target`），译文走结果的 `sentence`。
+- 选区翻译单独使用 Core `SelectionTranslator` trait，与 `Predictor` / `GlossFiller` 分别注入；`[predict.translation] enabled/channel` 控制 `build_selection_translator`。两种翻译渠道当前均为 `llm`（共用大模型服务配置），独立线程；未来翻译服务只需实现对应非阻塞 trait 并扩展渠道装配，不必实现联想。`predict.enabled` 总开关关闭时三种提供方均换空实现。
 
 ## crates/qingjian-format
 

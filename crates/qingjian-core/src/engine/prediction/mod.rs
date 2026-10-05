@@ -7,6 +7,7 @@
 //! Engine 这一侧的实现：组句中发请求、收结果校验、Tab 接受整句；翻译选中文字也走这里。
 
 mod cloud_word;
+mod english;
 mod fuzzy;
 mod kind;
 mod policy;
@@ -16,6 +17,7 @@ mod request;
 mod response;
 mod script;
 mod surrounding_text;
+mod translation;
 
 pub use cloud_word::CloudWord;
 pub use fuzzy::{mismatch_count, tolerance};
@@ -27,6 +29,7 @@ pub use request::PredictionRequest;
 pub use response::Prediction;
 pub use script::translation_target;
 pub use surrounding_text::SurroundingText;
+pub use translation::{NoSelectionTranslator, SelectionTranslator};
 
 use super::{
     Engine, MIN_PREDICTION_LETTERS, PREDICTION_CANDIDATE_HINTS, is_raw, query,
@@ -39,9 +42,14 @@ use crate::parser::{self, Segmentation};
 use crate::{sentence, shortcut};
 
 impl Engine {
-    /// 是否接了会联想的 Predictor；壳据此决定要不要起轮询定时器、画云朵标识。
+    /// 是否有联想或选区翻译渠道；壳据此轮询云端结果、画云朵标识。
     pub fn prediction_enabled(&self) -> bool {
-        self.predictor.is_enabled()
+        self.predictor.is_enabled() || self.selection_translator.is_enabled()
+    }
+
+    /// 是否允许翻译选中文字。
+    pub fn translation_enabled(&self) -> bool {
+        self.selection_translator.is_enabled() && !self.private
     }
 
     pub fn prediction_policy(&self) -> PredictionPolicy {
@@ -77,7 +85,9 @@ impl Engine {
         };
         let scope = self.composition.scope();
         if self.english_mode {
-            if !policy.english_sentence
+            let want_words =
+                policy.english_words && policy.slots > 0 && english::is_word_input(scope);
+            if !(policy.english_sentence || want_words)
                 || scope.chars().filter(|c| c.is_ascii_alphabetic()).count()
                     < MIN_PREDICTION_LETTERS
             {
@@ -91,10 +101,18 @@ impl Engine {
                 pinyin: String::new(),
                 letters: scope.to_owned(),
                 syllables: 0,
-                candidates: Vec::new(),
+                candidates: if want_words {
+                    candidates
+                        .iter()
+                        .take(PREDICTION_CANDIDATE_HINTS)
+                        .map(|c| c.text.clone())
+                        .collect()
+                } else {
+                    Vec::new()
+                },
                 guess: String::new(),
-                max_items: 0,
-                want_sentence: true,
+                max_items: if want_words { policy.max_items } else { 0 },
+                want_sentence: policy.english_sentence,
                 text: scope.to_owned(),
                 target_language: String::new(),
             };
@@ -148,6 +166,11 @@ impl Engine {
         if question {
             self.last_question_guess = guess.clone();
         }
+        let want_words = question || (policy.chinese_words && policy.slots > 0 && !abbreviated);
+        let want_sentence = policy.sentence && !question;
+        if !want_words && !want_sentence {
+            return None;
+        }
         let request = PredictionRequest {
             sequence: self.prediction_sequence,
             kind,
@@ -164,12 +187,8 @@ impl Engine {
             guess,
             // 简拼（半数以上音节是缩写）不问词：模型按声母凑出来的大多是生造词（复合语气、符号映射），
             // 只问整句补全；问字模式的答案不受这条限制（答案本来就对不上问题的拼音）。
-            max_items: if abbreviated && !question {
-                0
-            } else {
-                policy.max_items
-            },
-            want_sentence: policy.sentence && !question,
+            max_items: if !want_words { 0 } else { policy.max_items },
+            want_sentence,
             text: String::new(),
             target_language: String::new(),
         };
@@ -184,7 +203,7 @@ impl Engine {
     /// 译文从 [`Self::poll_prediction`] 的 `sentence` 里出。不进学习、不动缓冲区。
     pub fn request_translation(&mut self, text: &str) -> Option<u64> {
         let text = text.trim();
-        if !self.predictor.is_enabled() || self.private || text.is_empty() {
+        if !self.translation_enabled() || text.is_empty() {
             return None;
         }
         self.prediction_sequence += 1;
@@ -206,7 +225,7 @@ impl Engine {
                 .to_owned(),
         };
         self.last_prediction_kind = PredictionKind::Translate;
-        self.predictor.submit(request);
+        self.selection_translator.submit(request);
         Some(self.prediction_sequence)
     }
 
@@ -218,7 +237,11 @@ impl Engine {
     /// 取回最近一次请求的结果；过期结果直接丢。没有就绪的结果返回 `None`，不阻塞。
     /// 结果可能是空的（模型没给出可用条目），壳据此停止等待。
     pub fn poll_prediction(&mut self) -> Option<Prediction> {
-        while let Some(mut prediction) = self.predictor.poll() {
+        while let Some(mut prediction) = self
+            .selection_translator
+            .poll()
+            .or_else(|| self.predictor.poll())
+        {
             if prediction.sequence == self.prediction_sequence {
                 // 问字的答案、翻译的译文和敲的拼音本来就对不上，只有组句联想的云端词要校验
                 if self.last_prediction_kind == PredictionKind::Question {
@@ -229,11 +252,15 @@ impl Engine {
                 } else if self.last_prediction_kind == PredictionKind::Compose
                     && !self.question_mode()
                 {
-                    if self.predictor.policy().slots == 0 {
+                    if !self.predictor.policy().chinese_words || self.predictor.policy().slots == 0
+                    {
                         // 用户不要云端词，只留整句补全
                         prediction.words.clear();
                     } else {
                         self.validate_cloud_words(&mut prediction.words);
+                    }
+                    if !self.predictor.policy().sentence {
+                        prediction.sentence = None;
                     }
                     if !prediction.is_empty() {
                         // 给过用户什么：紧接着的上屏说明接没接受（本地联想能不能替代云端的尺子）
@@ -245,7 +272,22 @@ impl Engine {
                     }
                 }
                 if self.last_prediction_kind == PredictionKind::English {
-                    prediction.words.clear();
+                    let policy = self.predictor.policy();
+                    if !policy.english_words || policy.slots == 0 {
+                        prediction.words.clear();
+                    } else {
+                        prediction.words.retain_mut(|word| {
+                            if !english::matches_prefix(&word.text, &self.last_prediction_scope) {
+                                return false;
+                            }
+                            word.text =
+                                crate::english::adapt_case(&word.text, &self.last_prediction_scope);
+                            true
+                        });
+                    }
+                    if !policy.english_sentence {
+                        prediction.sentence = None;
+                    }
                 }
                 if self.traditional
                     && !matches!(

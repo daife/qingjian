@@ -6,8 +6,14 @@ mod watch;
 pub(super) use text_replacements::TextReplacement;
 pub(super) use watch::ConfigWatch;
 
+use super::Host;
 use super::init::load_glossary;
-use super::*;
+use crate::app::{logging, paths};
+use crate::host::LEARNING_FLUSH_INTERVAL;
+use crate::preferences::UpdateStatus;
+use qingjian_core::{Language, NoGlossFiller, NoPredictor, NoTranslator};
+use qingjian_platform::{GeneralConfig, Scheme};
+use qingjian_predict::CloudPredictor;
 
 impl Host {
     /// 把当前配置推给 Engine 与界面：模糊音 / 模式键 / 翻页 / 外观直接设；学习语言变了换释义表；
@@ -54,6 +60,7 @@ impl Host {
             self.open_input_log(config.general.input_log);
         }
         if force || config.predict != self.applied_predict {
+            self.end_translation();
             if config.predict.enabled {
                 // 没密钥等失败只记日志、退回不联想：输入优先于一切附加功能
                 match CloudPredictor::new(&config.predict) {
@@ -63,9 +70,18 @@ impl Host {
                         self.engine.set_predictor(Box::new(NoPredictor));
                     }
                 }
-                // 释义兜底随云联想一起开：释义表里没有的词上屏后问云端写进个人释义表
-                match CloudGlossFiller::new(&config.predict) {
-                    Ok(filler) => self.engine.set_gloss_filler(Box::new(filler)),
+                match qingjian_predict::build_selection_translator(&config.predict) {
+                    Ok(translator) => self.engine.set_selection_translator(translator),
+                    Err(error) => {
+                        tracing::warn!(%error, "选区翻译未启用");
+                        self.engine.set_selection_translator(Box::new(
+                            qingjian_core::NoSelectionTranslator,
+                        ));
+                    }
+                }
+                // 释义补全按独立开关与渠道装配
+                match qingjian_predict::build_gloss_filler(&config.predict) {
+                    Ok(filler) => self.engine.set_gloss_filler(filler),
                     Err(error) => {
                         tracing::warn!(%error, "释义兜底未启用");
                         self.engine.set_gloss_filler(Box::new(NoGlossFiller));
@@ -74,6 +90,8 @@ impl Host {
             } else {
                 self.engine.set_predictor(Box::new(NoPredictor));
                 self.engine.set_gloss_filler(Box::new(NoGlossFiller));
+                self.engine
+                    .set_selection_translator(Box::new(qingjian_core::NoSelectionTranslator));
             }
             self.monitor.stop();
             self.sentence = None;

@@ -49,15 +49,15 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 .on_toggled(context.callback(Message::LocalModel)),
         ),
         field(
-            "启用云联想",
-            "开启后组句时会把光标附近的几十个字发给下面的服务，让模型补全整句、联想下文；密钥框里的内容不发送。",
+            "启用云服务",
+            "开启后组句时会把光标附近的几十个字发给下面的服务，按下面的开关提供候选词、整句补全和翻译；密码框不发送。",
             ToggleSwitch::new()
                 .is_on(p.enabled)
                 .on_toggled(context.callback(Message::CloudEnabled)),
         ),
         field(
             "云端词格数",
-            "云端词到了只补进第一页末尾这几格，前面的本地候选不动；没到就什么都不变。0 = 只要整句补全。",
+            "云端词到了只补进第一页末尾这几格，前面的本地候选不动；没到就什么都不变。0 = 不请求云端候选词。",
             NumberBox::new()
                 .minimum(0.0)
                 .maximum(9.0)
@@ -65,9 +65,26 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 .on_value_changed(context.callback(Message::CloudSlots)),
         ),
         field(
+            "中文云端候选词联想",
+            "停键后补充当前输入的词候选，数字键选择。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.chinese_words)
+                .on_toggled(context.callback(Message::CloudChineseWords)),
+        ),
+        field(
+            "英文云端候选词联想",
+            "停键后补充当前输入的词候选，数字键选择。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.english_words)
+                .on_toggled(context.callback(Message::CloudEnglishWords)),
+        ),
+        field(
             "中文整句补全",
             "中文输入时给出整句补全，按 Tab 采用。",
             ToggleSwitch::new()
+                .is_enabled(p.enabled)
                 .is_on(p.sentence)
                 .on_toggled(context.callback(Message::CloudSentence)),
         ),
@@ -75,8 +92,61 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
             "英文整句补全",
             "英文输入时给出整句补全，按 Tab 采用。",
             ToggleSwitch::new()
+                .is_enabled(p.enabled)
                 .is_on(p.english_sentence)
                 .on_toggled(context.callback(Message::CloudEnglishSentence)),
+        ),
+        field(
+            "缺失释义补全",
+            "使用所选渠道提供翻译。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.gloss.enabled)
+                .on_toggled(context.callback(Message::CloudGloss)),
+        ),
+        field(
+            "释义补全渠道",
+            "共用大模型云服务使用下方的地址、模型与密钥。",
+            ComboBox::new()
+                .is_enabled(p.enabled && p.gloss.enabled)
+                .items_source(
+                    qingjian_predict::TranslationChannel::ALL
+                        .iter()
+                        .map(|channel| channel.label().to_owned())
+                        .collect::<Vec<_>>(),
+                )
+                .selected_index(
+                    qingjian_predict::TranslationChannel::ALL
+                        .iter()
+                        .position(|channel| *channel == p.gloss.channel),
+                )
+                .on_selection_changed(context.callback(Message::CloudGlossChannel)),
+        ),
+        field(
+            "翻译选中文字",
+            "使用所选渠道提供翻译。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.translation.enabled)
+                .on_toggled(context.callback(Message::CloudTranslation)),
+        ),
+        field(
+            "选区翻译渠道",
+            "共用大模型云服务使用下方的地址、模型与密钥。",
+            ComboBox::new()
+                .is_enabled(p.enabled && p.translation.enabled)
+                .items_source(
+                    qingjian_predict::TranslationChannel::ALL
+                        .iter()
+                        .map(|channel| channel.label().to_owned())
+                        .collect::<Vec<_>>(),
+                )
+                .selected_index(
+                    qingjian_predict::TranslationChannel::ALL
+                        .iter()
+                        .position(|channel| *channel == p.translation.channel),
+                )
+                .on_selection_changed(context.callback(Message::CloudTranslationChannel)),
         ),
         field(
             "联想 & 整句补全场景",

@@ -329,7 +329,7 @@ disabled = []
 enabled = true
 
 [predict]
-# 云联想：把光标附近的文本发到下面的接口，让模型补全整句 / 联想下文。默认关闭。
+# 云服务总开关：按各功能开关提供候选词、整句补全和翻译。默认关闭。
 # 开启后菜单栏的「中 / 英」旁会带一个云朵标识；Secure Input（密码框）里绝不发送。
 enabled = false
 # OpenAI 兼容接口地址与模型名（DeepSeek 默认值）
@@ -348,6 +348,9 @@ lookback = 64
 lookahead = 32
 # 云端词到了补进候选窗口第一页末尾几格（比如 2 就是 8、9 两格），前面的本地候选不动；0 表示不要云端词
 slots = 2
+# 中英文云端候选词联想独立开关；英文默认关闭以保持旧配置行为
+chinese_words = true
+english_words = false
 # 组句中除了词候选还要不要整句补全（preedit 右侧，Tab 接受）
 sentence = true
 # 英文整句补全独立开关（Tab 接受）
@@ -355,6 +358,17 @@ english_sentence = true
 # 常用场景参考：开启后随中英文联想 / 整句补全请求发送；逗号、分号或换行分隔
 scenarios_enabled = false
 scenarios = ""
+
+[predict.gloss]
+# 上屏后自动补充本地缺失的释义；云服务总开关也必须开启
+enabled = true
+# llm 共用上面的云服务地址、模型与密钥
+channel = "llm"
+
+[predict.translation]
+# 快捷键翻译选中文字，独立于候选词联想与整句补全
+enabled = true
+channel = "llm"
 
 [status_bar]
 # 桌面上常驻、可拖动的悬浮状态条（Windows）：「中 / 英」格点一下切换模式（开着双拼时还显示方案名）、「，。」格切全角 / 半角标点、齿轮打开设置。
@@ -500,11 +514,7 @@ impl Config {
             path: path.to_owned(),
             source: Box::new(source),
         })?;
-        // 分节不存在时先建成标准表，否则 toml_edit 会写成顶层的行内表 `predict = { enabled = true }`
-        if !document.get(section).is_some_and(|item| item.is_table()) {
-            document[section] = toml_edit::table();
-        }
-        document[section][key] = toml_edit::value(value);
+        section_table(&mut document, section).insert(key, toml_edit::value(value));
         // 写临时文件再改名：输入法进程随时可能被杀，不能留半个配置文件
         write_file(path, &document.to_string())
     }
@@ -531,14 +541,11 @@ impl Config {
             path: path.to_owned(),
             source: Box::new(source),
         })?;
-        if !document.get(section).is_some_and(|item| item.is_table()) {
-            document[section] = toml_edit::table();
-        }
         let mut array = toml_edit::Array::new();
         for value in values {
             array.push(value.as_ref());
         }
-        document[section][key] = toml_edit::value(array);
+        section_table(&mut document, section).insert(key, toml_edit::value(array));
         write_file(path, &document.to_string())
     }
 
@@ -564,6 +571,21 @@ fn write_file(path: &Path, text: &str) -> Result<(), ConfigError> {
         path: path.to_owned(),
         source,
     })
+}
+
+/// 点分节路径用于 `[predict.gloss]` 等配置，保留已有行内表与注释。
+fn section_table<'a>(
+    document: &'a mut DocumentMut,
+    section: &str,
+) -> &'a mut dyn toml_edit::TableLike {
+    let mut table: &mut dyn toml_edit::TableLike = document.as_table_mut();
+    for part in section.split('.') {
+        if !table.get(part).is_some_and(toml_edit::Item::is_table_like) {
+            table.insert(part, toml_edit::table());
+        }
+        table = table.get_mut(part).unwrap().as_table_like_mut().unwrap();
+    }
+    table
 }
 
 #[cfg(test)]
@@ -618,6 +640,31 @@ mod tests {
         );
         assert_eq!(config.shortcut.switch_mode, SwitchKeys::default());
         assert!(config.general.english_mode);
+    }
+
+    #[test]
+    fn nested_translation_settings_preserve_other_tasks_and_comments() {
+        let path = std::env::temp_dir().join("qingjian-config-translation-tasks-test.toml");
+        std::fs::write(
+            &path,
+            "# 保留注释\n[predict]\nenabled = true\nsentence = false\n",
+        )
+        .unwrap();
+        Config::set_bool(&path, "predict.gloss", "enabled", false).unwrap();
+        Config::set_value(&path, "predict.gloss", "channel", "llm").unwrap();
+        Config::set_bool(&path, "predict.translation", "enabled", true).unwrap();
+        Config::set_bool(&path, "predict", "english_words", true).unwrap();
+        let config = Config::load(&path).unwrap();
+        assert!(config.predict.enabled && config.predict.english_words);
+        assert!(!config.predict.sentence && !config.predict.gloss.enabled);
+        assert!(config.predict.translation.enabled);
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            text.contains("# 保留注释")
+                && text.contains("[predict.gloss]")
+                && text.contains("[predict.translation]")
+        );
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]

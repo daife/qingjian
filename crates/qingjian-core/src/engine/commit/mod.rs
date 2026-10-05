@@ -24,6 +24,13 @@ pub use last::LastCommit;
 pub use transition::Transition;
 
 impl Engine {
+    pub(super) fn is_english_candidate(&self, candidate: &Candidate) -> bool {
+        candidate.kind == CandidateKind::English
+            || (candidate.kind == CandidateKind::Cloud
+                && self.english_mode
+                && !self.question_mode())
+    }
+
     /// 给候选补上译文。与 [`Self::query`] 分开调用，平台层可以先画候选再补画译文。
     pub fn annotate(&self, list: &mut CandidateList) -> AnnotationReport {
         let start = Instant::now();
@@ -39,10 +46,12 @@ impl Engine {
             candidate.translation = match candidate.kind {
                 CandidateKind::Custom(_) => None,
                 // 英文候选按敲的大小写显示（Company / COMPANY），释义表键是小写
-                CandidateKind::English => self.english_translator.translate(text).or_else(|| {
-                    self.english_translator
-                        .translate(&text.to_ascii_lowercase())
-                }),
+                _ if self.is_english_candidate(candidate) => {
+                    self.english_translator.translate(text).or_else(|| {
+                        self.english_translator
+                            .translate(&text.to_ascii_lowercase())
+                    })
+                }
                 _ => self.translator.translate(text).map(|mut translation| {
                     self.mark_fresh(&mut translation);
                     translation
@@ -87,6 +96,10 @@ impl Engine {
     ) -> String {
         let traditional_text = candidate.text.clone();
         let mut candidate_owned = candidate.clone();
+        // 英文云端词保留云朵显示，上屏时走英文学习。
+        if self.is_english_candidate(candidate) {
+            candidate_owned.kind = CandidateKind::English;
+        }
         if self.traditional
             && let Some(simp) = self.traditional_map.borrow().get(&candidate_owned.text)
         {

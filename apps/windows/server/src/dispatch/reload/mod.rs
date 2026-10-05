@@ -11,7 +11,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use qingjian_core::{Engine, Language, NoGlossFiller, NoPredictor, NoTranslator};
 use qingjian_platform::{Config, code_tables};
-use qingjian_predict::{CloudGlossFiller, CloudPredictor, PredictConfig};
+use qingjian_predict::{CloudPredictor, PredictConfig};
 
 pub(super) use self::state::ConfigReload;
 pub use self::state::DataDirs;
@@ -35,6 +35,7 @@ pub fn attach_cloud(engine: &mut Engine, predict: &PredictConfig) {
     if !predict.enabled {
         tracing::info!("云联想未开启（[predict] enabled = false）");
         engine.set_predictor(Box::new(NoPredictor));
+        engine.set_selection_translator(Box::new(qingjian_core::NoSelectionTranslator));
         engine.set_gloss_filler(Box::new(NoGlossFiller));
         return;
     }
@@ -48,8 +49,15 @@ pub fn attach_cloud(engine: &mut Engine, predict: &PredictConfig) {
             engine.set_predictor(Box::new(NoPredictor));
         }
     }
-    match CloudGlossFiller::new(predict) {
-        Ok(filler) => engine.set_gloss_filler(Box::new(filler)),
+    match qingjian_predict::build_selection_translator(predict) {
+        Ok(translator) => engine.set_selection_translator(translator),
+        Err(error) => {
+            tracing::warn!(%error, "选区翻译未启用");
+            engine.set_selection_translator(Box::new(qingjian_core::NoSelectionTranslator));
+        }
+    }
+    match qingjian_predict::build_gloss_filler(predict) {
+        Ok(filler) => engine.set_gloss_filler(filler),
         Err(error) => {
             tracing::warn!(%error, "释义兜底未启用");
             engine.set_gloss_filler(Box::new(NoGlossFiller));
@@ -219,6 +227,15 @@ impl Router {
         self.reconcile_status();
         self.apply_model_config(&config.model);
 
+        if self
+            .reload
+            .as_ref()
+            .is_some_and(|reload| config.predict != reload.applied_predict)
+        {
+            self.end_translation();
+            self.pending_selection = None;
+            self.sentence = None;
+        }
         let Some(reload) = &mut self.reload else {
             return;
         };

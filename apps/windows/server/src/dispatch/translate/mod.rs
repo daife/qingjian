@@ -42,7 +42,7 @@ impl Router {
         }
         self.pending_selection = None;
         let text = text.trim();
-        if text.is_empty() || !self.engine.prediction_enabled() {
+        if text.is_empty() || !self.engine.translation_enabled() {
             tracing::info!("翻译选中文字：没有可读的选区（或云服务已关）");
             return empty;
         }

@@ -146,6 +146,28 @@ impl Component for Settings {
                 let slots = (value.round() as i64).clamp(0, 9);
                 self.save("predict", "slots", slots);
             }
+            Message::CloudChineseWords(on) => self.save("predict", "chinese_words", on),
+            Message::CloudEnglishWords(on) => self.save("predict", "english_words", on),
+            Message::CloudGloss(on) => self.save("predict.gloss", "enabled", on),
+            Message::CloudTranslation(on) => self.save("predict.translation", "enabled", on),
+            Message::CloudGlossChannel(Some(i))
+                if i < qingjian_predict::TranslationChannel::ALL.len() =>
+            {
+                self.save(
+                    "predict.gloss",
+                    "channel",
+                    qingjian_predict::TranslationChannel::ALL[i].key(),
+                );
+            }
+            Message::CloudTranslationChannel(Some(i))
+                if i < qingjian_predict::TranslationChannel::ALL.len() =>
+            {
+                self.save(
+                    "predict.translation",
+                    "channel",
+                    qingjian_predict::TranslationChannel::ALL[i].key(),
+                );
+            }
             Message::CloudSentence(on) => self.save("predict", "sentence", on),
             Message::CloudEnglishSentence(on) => self.save("predict", "english_sentence", on),
             Message::CloudScenariosEnabled(on) => self.save("predict", "scenarios_enabled", on),

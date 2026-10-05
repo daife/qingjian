@@ -506,10 +506,7 @@ fn no_predictor_never_requests() {
 fn translation_requests_carry_the_text_and_target_language() {
     use std::sync::{Arc, Mutex};
     struct Recorder(Arc<Mutex<Vec<PredictionRequest>>>);
-    impl Predictor for Recorder {
-        fn policy(&self) -> PredictionPolicy {
-            PredictionPolicy::default()
-        }
+    impl crate::SelectionTranslator for Recorder {
         fn submit(&mut self, request: PredictionRequest) {
             self.0.lock().unwrap().push(request);
         }
@@ -519,7 +516,7 @@ fn translation_requests_carry_the_text_and_target_language() {
     }
     let sent = Arc::new(Mutex::new(Vec::new()));
     let mut engine = Engine::new(Dictionary::parse(SAMPLE).unwrap())
-        .with_predictor(Box::new(Recorder(sent.clone())));
+        .with_selection_translator(Box::new(Recorder(sent.clone())));
     assert!(engine.request_translation("  ").is_none());
     let sequence = engine.request_translation("我想去吃饭").unwrap();
     let requests = sent.lock().unwrap();
@@ -600,3 +597,5 @@ fn english_sentence_requests_completion_without_pinyin_conversion() {
     );
     assert!(engine.composition().is_empty());
 }
+
+mod english;

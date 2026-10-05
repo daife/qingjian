@@ -59,6 +59,24 @@ pub enum Setting {
     /// `[predict] scenarios`。
     CloudScenarios,
 
+    /// `[predict] chinese_words`。
+    CloudChineseWords,
+
+    /// `[predict] english_words`。
+    CloudEnglishWords,
+
+    /// `[predict.gloss] enabled`。
+    CloudGloss,
+
+    /// `[predict.translation] enabled`。
+    CloudTranslation,
+
+    /// `[predict.gloss] channel`。
+    CloudGlossChannel,
+
+    /// `[predict.translation] channel`。
+    CloudTranslationChannel,
+
     /// `[predict] sentence`。
     CloudSentence,
 
@@ -223,6 +241,12 @@ impl Setting {
             Self::CloudEnabled => 7,
             Self::CloudScenariosEnabled => 57,
             Self::CloudScenarios => 58,
+            Self::CloudChineseWords => 61,
+            Self::CloudEnglishWords => 62,
+            Self::CloudGloss => 63,
+            Self::CloudTranslation => 64,
+            Self::CloudGlossChannel => 65,
+            Self::CloudTranslationChannel => 66,
             Self::CloudSentence => 59,
             Self::CloudEnglishSentence => 60,
             Self::BaseUrl => 8,
@@ -293,6 +317,12 @@ impl Setting {
             7 => Self::CloudEnabled,
             57 => Self::CloudScenariosEnabled,
             58 => Self::CloudScenarios,
+            61 => Self::CloudChineseWords,
+            62 => Self::CloudEnglishWords,
+            63 => Self::CloudGloss,
+            64 => Self::CloudTranslation,
+            65 => Self::CloudGlossChannel,
+            66 => Self::CloudTranslationChannel,
             59 => Self::CloudSentence,
             60 => Self::CloudEnglishSentence,
             8 => Self::BaseUrl,
@@ -375,6 +405,12 @@ mod tests {
             Setting::CloudEnabled,
             Setting::CloudScenariosEnabled,
             Setting::CloudScenarios,
+            Setting::CloudChineseWords,
+            Setting::CloudEnglishWords,
+            Setting::CloudGloss,
+            Setting::CloudTranslation,
+            Setting::CloudGlossChannel,
+            Setting::CloudTranslationChannel,
             Setting::CloudSentence,
             Setting::CloudEnglishSentence,
             Setting::LocalModelEnabled,

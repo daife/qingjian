@@ -27,6 +27,24 @@ pub struct CloudPage {
     /// 云端词槽位数（0–4）。
     slots: Retained<NSPopUpButton>,
 
+    /// 中文云端候选词联想。
+    chinese_words: Retained<NSButton>,
+
+    /// 英文云端候选词联想。
+    english_words: Retained<NSButton>,
+
+    /// 缺失释义补全。
+    gloss: Retained<NSButton>,
+
+    /// 翻译选中文字。
+    translation: Retained<NSButton>,
+
+    /// 释义补全渠道。
+    gloss_channel: Retained<NSPopUpButton>,
+
+    /// 选区翻译渠道。
+    translation_channel: Retained<NSPopUpButton>,
+
     /// 中文整句补全开关。
     sentence: Retained<NSButton>,
 
@@ -61,7 +79,7 @@ impl CloudPage {
             mtm,
             "随包的小模型在本机给整句候选重新排序，全程离线；停键后几十毫秒生效。关掉只用词库统计。",
         );
-        let enabled = checkbox(mtm, "启用云联想", Setting::CloudEnabled, target);
+        let enabled = checkbox(mtm, "启用云服务", Setting::CloudEnabled, target);
         row_checkbox(layout, &enabled);
         note(
             layout,
@@ -70,7 +88,7 @@ impl CloudPage {
         );
         let slot_titles: Vec<String> = (0..=MAX_CLOUD_SLOTS)
             .map(|n| match n {
-                0 => "不要（只要整句补全）".to_owned(),
+                0 => "不要云端候选词".to_owned(),
                 n => format!("{n} 格"),
             })
             .collect();
@@ -86,6 +104,44 @@ impl CloudPage {
             layout,
             mtm,
             "云端词到了只补进第一页末尾这几格（比如 2 就是 8、9），前面的本地候选不动；没到就什么都不变，翻页后全是本地候选。",
+        );
+        let channel_titles: Vec<String> = qingjian_predict::TranslationChannel::ALL
+            .iter()
+            .map(|c| c.label().to_owned())
+            .collect();
+        let chinese_words = checkbox(
+            mtm,
+            "中文云端候选词联想",
+            Setting::CloudChineseWords,
+            target,
+        );
+        row_checkbox(layout, &chinese_words);
+        let english_words = checkbox(
+            mtm,
+            "英文云端候选词联想",
+            Setting::CloudEnglishWords,
+            target,
+        );
+        row_checkbox(layout, &english_words);
+        let gloss = checkbox(mtm, "缺失释义补全", Setting::CloudGloss, target);
+        row_checkbox(layout, &gloss);
+        let translation = checkbox(mtm, "翻译选中文字", Setting::CloudTranslation, target);
+        row_checkbox(layout, &translation);
+        let gloss_channel = row_popup(
+            layout,
+            mtm,
+            "释义补全渠道",
+            &channel_titles,
+            Setting::CloudGlossChannel,
+            target,
+        );
+        let translation_channel = row_popup(
+            layout,
+            mtm,
+            "选区翻译渠道",
+            &channel_titles,
+            Setting::CloudTranslationChannel,
+            target,
         );
         let sentence = checkbox(mtm, "中文整句补全", Setting::CloudSentence, target);
         row_checkbox(layout, &sentence);
@@ -128,6 +184,12 @@ impl CloudPage {
             local_model,
             enabled,
             slots,
+            chinese_words,
+            english_words,
+            gloss,
+            translation,
+            gloss_channel,
+            translation_channel,
             sentence,
             english_sentence,
             scenarios_enabled,
@@ -147,6 +209,31 @@ impl CloudPage {
         set_checked(&self.enabled, config.predict.enabled);
         let cloud = config.predict.enabled;
         self.slots.setEnabled(cloud);
+        set_checked(&self.chinese_words, config.predict.chinese_words);
+        self.chinese_words.setEnabled(cloud);
+        set_checked(&self.english_words, config.predict.english_words);
+        self.english_words.setEnabled(cloud);
+        set_checked(&self.gloss, config.predict.gloss.enabled);
+        self.gloss.setEnabled(cloud);
+        set_checked(&self.translation, config.predict.translation.enabled);
+        self.translation.setEnabled(cloud);
+        select(
+            &self.gloss_channel,
+            qingjian_predict::TranslationChannel::ALL
+                .iter()
+                .position(|c| *c == config.predict.gloss.channel),
+        );
+        self.gloss_channel
+            .setEnabled(cloud && config.predict.gloss.enabled);
+        select(
+            &self.translation_channel,
+            qingjian_predict::TranslationChannel::ALL
+                .iter()
+                .position(|c| *c == config.predict.translation.channel),
+        );
+        self.translation_channel
+            .setEnabled(cloud && config.predict.translation.enabled);
+
         set_checked(&self.sentence, config.predict.sentence);
         set_checked(&self.english_sentence, config.predict.english_sentence);
         self.sentence.setEnabled(cloud);

@@ -6,7 +6,7 @@ pub struct CloudWord {
     /// 词。
     pub text: String,
 
-    /// 全拼音节，如 `["zhang", "tao"]`。问字模式的答案不校验拼音，这里为空。
+    /// 全拼音节，如 `["zhang", "tao"]`。问字答案和英文词为空。
     pub syllables: Vec<String>,
 
     /// 显示用读音（问字模式答案的带声调拼音，如 `sēn`）。

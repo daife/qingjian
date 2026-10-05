@@ -5,6 +5,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PredictConfig {
+    /// 中文候选词联想。
+    pub chinese_words: bool,
+
+    /// 英文候选词联想。
+    pub english_words: bool,
+
+    /// 缺失释义补全。
+    pub gloss: crate::TranslationConfig,
+
+    /// 翻译选中文字的独立配置。
+    pub translation: crate::TranslationConfig,
+
     /// 是否启用。
     pub enabled: bool,
 
@@ -57,6 +69,10 @@ impl Default for PredictConfig {
     fn default() -> Self {
         Self {
             enabled: false,
+            chinese_words: true,
+            english_words: false,
+            gloss: crate::TranslationConfig::default(),
+            translation: crate::TranslationConfig::default(),
             base_url: "https://api.deepseek.com".to_owned(),
             model: "deepseek-v4-flash".to_owned(),
             api_key: None,
@@ -89,6 +105,8 @@ impl PredictConfig {
 
     pub fn policy(&self) -> PredictionPolicy {
         PredictionPolicy {
+            chinese_words: self.chinese_words,
+            english_words: self.english_words,
             before: self.lookback,
             after: self.lookahead,
             slots: self.slots,

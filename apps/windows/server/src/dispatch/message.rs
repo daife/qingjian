@@ -128,7 +128,7 @@ impl Router {
             return self.handle_translation_review(session, &event);
         }
         if self.engine.composition().is_empty()
-            && self.engine.prediction_enabled()
+            && self.engine.translation_enabled()
             && self.matches_translate_combo(&event)
         {
             self.selection_seq += 1;

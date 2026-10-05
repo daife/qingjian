@@ -47,8 +47,8 @@ pub use learning::{Forgotten, Learner, NoLearner};
 pub use marked::{AuxSegment, MarkedKind, MarkedSegment};
 pub use mode_keys::{ModeKeys, QUESTION_PREFIX};
 pub use prediction::{
-    CloudWord, NoPredictor, Prediction, PredictionKind, PredictionPolicy, PredictionRequest,
-    Predictor, SurroundingText,
+    CloudWord, NoPredictor, NoSelectionTranslator, Prediction, PredictionKind, PredictionPolicy,
+    PredictionRequest, Predictor, SelectionTranslator, SurroundingText,
 };
 
 pub use query::Query;
@@ -206,6 +206,9 @@ pub struct Engine {
 
     /// 释义兜底：释义表里没有的词上屏后问云端；缺省不问。
     gloss_filler: Box<dyn GlossFiller>,
+
+    /// 独立渠道的选区翻译。
+    selection_translator: Box<dyn SelectionTranslator>,
 
     /// 候选窗口当前页上的译词（壳每次画完告知），上屏时记成「看到过」。
     displayed: Vec<(Language, String)>,
@@ -426,6 +429,7 @@ impl Engine {
             meter: Box::new(NoUsageMeter),
             vocabulary: Box::new(NoVocabularyTracker),
             gloss_filler: Box::new(NoGlossFiller),
+            selection_translator: Box::new(NoSelectionTranslator),
             displayed: Vec::new(),
             last_query: std::cell::RefCell::new(None),
             recording: Vec::new(),

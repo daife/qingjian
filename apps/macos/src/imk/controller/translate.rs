@@ -7,7 +7,7 @@ impl QingjianInputController {
     /// 不在组句中时不管；候选没有译文就吞掉按键不动，免得 ¡™£ 进应用。
     /// 翻译应用里选中的文字：云服务关着、密码框、没有选区都不动（键交回应用）。
     pub(super) fn translate_selection(&self, client: TextClient<'_>) -> bool {
-        if !host::with(|h| h.engine.prediction_enabled()).unwrap_or(false) {
+        if !host::with(|h| h.engine.translation_enabled()).unwrap_or(false) {
             tracing::info!("云服务没开，翻译快捷键不生效");
             return false;
         }

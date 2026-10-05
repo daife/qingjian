@@ -3,6 +3,12 @@
 /// 无论壳传来多长的文本，Core 都只发这么多：这是隐私上限的最后一道闸。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PredictionPolicy {
+    /// 中文候选词联想。
+    pub chinese_words: bool,
+
+    /// 英文候选词联想。
+    pub english_words: bool,
+
     /// 光标前最多看几个字符。
     pub before: usize,
 
@@ -25,6 +31,8 @@ pub struct PredictionPolicy {
 impl Default for PredictionPolicy {
     fn default() -> Self {
         Self {
+            chinese_words: true,
+            english_words: false,
             before: 64,
             after: 32,
             slots: 2,

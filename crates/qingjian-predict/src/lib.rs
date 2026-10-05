@@ -19,4 +19,6 @@ pub use cloud_predictor::CloudPredictor;
 pub use config::PredictConfig;
 pub use connection::{ConnectionReport, ConnectionTest};
 pub use error::PredictError;
-pub use gloss::CloudGlossFiller;
+pub use gloss::{CloudGlossFiller, build_gloss_filler};
+mod translation;
+pub use translation::{TranslationChannel, TranslationConfig, build_selection_translator};

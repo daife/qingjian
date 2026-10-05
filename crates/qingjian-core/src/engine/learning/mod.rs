@@ -41,7 +41,7 @@ impl Engine {
     pub fn note_displayed<'a>(&mut self, candidates: impl IntoIterator<Item = &'a Candidate>) {
         self.displayed.clear();
         for candidate in candidates {
-            if candidate.kind == CandidateKind::English {
+            if self.is_english_candidate(candidate) {
                 continue;
             }
             let Some(translation) = &candidate.translation else {
@@ -151,6 +151,9 @@ impl Engine {
     /// 整句、快捷候选、emoji 没什么可删。删完缓存作废，它也不再当下一个词的上文。
     pub fn forget(&mut self, candidate: &Candidate) -> Forgotten {
         let mut candidate_owned = candidate.clone();
+        if self.is_english_candidate(candidate) {
+            candidate_owned.kind = CandidateKind::English;
+        }
         if self.traditional
             && let Some(simp) = self.traditional_map.borrow().get(&candidate_owned.text)
         {

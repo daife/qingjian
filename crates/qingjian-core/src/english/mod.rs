@@ -68,7 +68,7 @@ pub fn suggest(
 }
 
 /// 词表里的写法按敲的大小写调整：全大写就全大写，首字母大写就首字母大写，其余照词表（iPhone 仍是 iPhone）。
-fn adapt_case(word: &str, typed: &str) -> String {
+pub(crate) fn adapt_case(word: &str, typed: &str) -> String {
     let mut chars = typed.chars();
     let first_upper = chars.next().is_some_and(|c| c.is_ascii_uppercase());
     let rest_upper = typed.len() >= 2 && typed.chars().all(|c| !c.is_ascii_lowercase());

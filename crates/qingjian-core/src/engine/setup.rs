@@ -464,7 +464,21 @@ impl Engine {
         self
     }
 
-    /// 运行时换释义兜底（随云联想开关）。
+    pub fn with_selection_translator(
+        mut self,
+        translator: Box<dyn super::SelectionTranslator>,
+    ) -> Self {
+        self.set_selection_translator(translator);
+        self
+    }
+
+    /// 切换选区翻译渠道，作废旧渠道的在飞结果。
+    pub fn set_selection_translator(&mut self, translator: Box<dyn super::SelectionTranslator>) {
+        self.cancel_prediction();
+        self.selection_translator = translator;
+    }
+
+    /// 运行时换释义补全渠道。
     pub fn set_gloss_filler(&mut self, filler: Box<dyn GlossFiller>) {
         self.gloss_filler = filler;
     }

@@ -12,6 +12,7 @@ mod learning;
 mod lookup;
 mod privacy;
 mod raw;
+mod selection_translation;
 mod shuangpin;
 mod zhuyin;
 
@@ -152,6 +153,8 @@ unsafe impl Send for EchoPredictor {}
 impl Predictor for EchoPredictor {
     fn policy(&self) -> PredictionPolicy {
         PredictionPolicy {
+            chinese_words: true,
+            english_words: false,
             before: 4,
             after: 2,
             slots: 2,

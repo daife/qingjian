@@ -9,3 +9,17 @@ mod prompt;
 mod worker;
 
 pub use cloud_gloss_filler::CloudGlossFiller;
+
+use crate::TranslationChannel;
+
+/// 按独立开关与渠道装配释义补全。
+pub fn build_gloss_filler(
+    config: &crate::PredictConfig,
+) -> Result<Box<dyn qingjian_core::GlossFiller>, crate::PredictError> {
+    if !config.enabled || !config.gloss.enabled {
+        return Ok(Box::new(qingjian_core::NoGlossFiller));
+    }
+    match config.gloss.channel {
+        TranslationChannel::Llm => Ok(Box::new(CloudGlossFiller::new(config)?)),
+    }
+}

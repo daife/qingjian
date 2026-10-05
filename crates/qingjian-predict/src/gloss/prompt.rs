@@ -19,25 +19,25 @@ pub const ENGLISH_SYSTEM_PROMPT: &str = "你是汉英词典编纂者。逐词给
 规则：\n\
 - pos：主要词性： n. v. adj. adv. pron. prep. conj. num. m. part. int. phr. 之一（m. 量词，part. 助词，phr. 短语或成语）。\n\
 - senses：1–2 条常用英文对应词，常用优先；每条不超过 3 个英文单词；动词用原形，名词用单数；无括号、解释、例句。\n\
-- 专名照译；多义词取常用义；网络用语、方言取近义；不确定取最可能译法，不留空。\n\
+- 专名照译；多义词取常用义；网络用语、方言取近义；无法可靠翻译时省略该词，不猜测。\n\
 输出严格的 JSON：{\"items\":[{\"w\":\"开发\",\"pos\":\"v.\",\"senses\":[{\"t\":\"develop\"},{\"t\":\"exploit\"}]}]}。\n\
-items 按输入顺序逐词一项，w 原样保留。";
+items 只包含能可靠翻译的词，按输入顺序每词至多一项，w 原样保留；均无法可靠翻译时返回 {\"items\":[]}。";
 
 pub const JAPANESE_SYSTEM_PROMPT: &str = "你是汉日词典编纂者。逐词给简短日文对应词，只给译词，不解释。\n\
 规则：\n\
 - pos：主要词性： n. v. adj. adv. pron. prep. conj. num. m. part. int. phr. 之一（m. 量词，part. 助词，phr. 短语或成语）。\n\
 - senses：1–2 条常用日文对应词，常用优先；每条给 t（通常写法，汉字假名混写）和 r（t 的完整读音，只用平假名，外来语用片假名）；サ変动词写成「〜する」；不要解释。\n\
-- 专名照译（日文用惯用写法）；多义词取常用义；网络用语、方言取近义；不确定取最可能译法，不留空。\n\
+- 专名照译（日文用惯用写法）；多义词取常用义；网络用语、方言取近义；无法可靠翻译时省略该词，不猜测。\n\
 输出严格的 JSON：{\"items\":[{\"w\":\"开发\",\"pos\":\"v.\",\"senses\":[{\"t\":\"開発する\",\"r\":\"かいはつする\"}]}]}。\n\
-items 按输入顺序逐词一项，w 原样保留。";
+items 只包含能可靠翻译的词，按输入顺序每词至多一项，w 原样保留；均无法可靠翻译时返回 {\"items\":[]}。";
 
 pub const SPANISH_SYSTEM_PROMPT: &str = "你是汉西词典编纂者。逐词给简短西班牙文对应词，只给译词，不解释。\n\
 规则：\n\
 - pos：主要词性： n. v. adj. adv. pron. prep. conj. num. m. part. int. phr. 之一（m. 量词，part. 助词，phr. 短语或成语）。\n\
 - senses：1–2 条常用西班牙文对应词，常用优先；每条不超过 3 个西班牙文单词；动词用原形（不定式），名词用单数，形容词用阳性单数；无括号、解释、例句。\n\
-- 专名照译；多义词取常用义；网络用语、方言取近义；不确定取最可能译法，不留空。\n\
+- 专名照译；多义词取常用义；网络用语、方言取近义；无法可靠翻译时省略该词，不猜测。\n\
 输出严格的 JSON：{\"items\":[{\"w\":\"开发\",\"pos\":\"v.\",\"senses\":[{\"t\":\"desarrollar\"},{\"t\":\"explotar\"}]}]}。\n\
-items 按输入顺序逐词一项，w 原样保留。";
+items 只包含能可靠翻译的词，按输入顺序每词至多一项，w 原样保留；均无法可靠翻译时返回 {\"items\":[]}。";
 
 /// 学习语言对应的系统提示；中文没有（不会请求）。
 pub fn system_prompt(language: Language) -> &'static str {
@@ -178,6 +178,25 @@ fn is_kana(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unreliable_glosses_can_be_omitted_without_persisting_guesses() {
+        let words = vec!["无法识别的词".to_owned()];
+        for language in [Language::English, Language::Japanese, Language::Spanish] {
+            let prompt = system_prompt(language);
+            assert!(prompt.contains("无法可靠翻译时省略该词，不猜测"));
+            assert!(!prompt.contains("不确定取最可能译法"));
+            assert!(parse_reply(r#"{"items":[]}"#, language, &words).is_empty());
+            assert!(
+                parse_reply(
+                    r#"{"items":[{"w":"无法识别的词","senses":[]}]}"#,
+                    language,
+                    &words
+                )
+                .is_empty()
+            );
+        }
+    }
 
     #[test]
     fn parses_english_items_and_drops_explanations() {
