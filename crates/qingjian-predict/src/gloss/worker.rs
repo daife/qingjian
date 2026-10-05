@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use qingjian_core::{FilledGloss, Language};
 
 use super::prompt;
+use crate::cache_session::CacheSession;
 use crate::chat_client::ChatClient;
 use crate::error::PredictError;
 
@@ -103,7 +104,10 @@ impl GlossWorker {
         let start = Instant::now();
         let system = prompt::system_prompt(language);
         let user = prompt::user_prompt(&words);
-        match runtime.block_on(self.client.chat(system, &user, MAX_TOKENS)) {
+        match runtime.block_on(
+            self.client
+                .chat(CacheSession::Gloss, system, &user, MAX_TOKENS),
+        ) {
             Ok(content) => {
                 let filled = prompt::parse_reply(&content, language, &words);
                 tracing::info!(

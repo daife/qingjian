@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use std::time::Instant;
 
 use super::report::ConnectionReport;
+use crate::cache_session::CacheSession;
 use crate::chat_client::ChatClient;
 use crate::config::PredictConfig;
 use crate::error::PredictError;
@@ -64,7 +65,12 @@ fn run(client: &ChatClient, model: String) -> Result<ConnectionReport, PredictEr
         .enable_all()
         .build()?;
     let started = Instant::now();
-    let reply = runtime.block_on(client.chat(SYSTEM_PROMPT, USER_PROMPT, MAX_TOKENS))?;
+    let reply = runtime.block_on(client.chat(
+        CacheSession::Chinese,
+        SYSTEM_PROMPT,
+        USER_PROMPT,
+        MAX_TOKENS,
+    ))?;
     Ok(ConnectionReport {
         model,
         elapsed: started.elapsed(),

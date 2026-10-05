@@ -6,6 +6,7 @@
 //! [`CloudGlossFiller`] 是释义兜底（[`qingjian_core::GlossFiller`]）的网络实现，独立线程，攒批问、不丢请求。
 
 mod cache;
+mod cache_session;
 mod chat_client;
 mod cloud_predictor;
 mod config;

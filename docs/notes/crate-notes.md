@@ -95,6 +95,8 @@ TSV 解析、查询与生成工具把 `lue` / `nue` 统一成 `lve` / `nve`。
   拼音校验又按首字母序列匹配放行缩写，拦不住；问字模式的答案不受这条限制。
 - `prompt/chinese` 与 `prompt/english` 是两套独立提示词；按 `max_items` / `want_sentence` 拼任务规则，`prompt/schema` 只要求启用任务的回复字段，schema 写进提示词，接口仍用兼容面更广的 JSON object 模式。用户 JSON 省略未使用的本地提示和条数；英文词无拼音，Core 校验单词前缀并适配大小写。
   每次只发 system + user，不携带会话历史；联想与释义客户端在 debug 日志记录响应 `usage`（服务商提供时），用于观察实际 token 消耗。
+- 云端缓存会话按五类用途固定标识：中文联想 + 补全 `qingjian-chinese-prediction`、英文联想 + 补全 `qingjian-english-prediction`、释义补全 `qingjian-gloss-completion`、选区翻译 `qingjian-selection-translation`、问字 `qingjian-character-question`。标识不含个人信息或输入内容，重启 / 重建客户端不变；连接测试复用中文标识。
+  按接口主机映射：[DeepSeek](https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/) 请求体 `user_id`、[OpenAI](https://developers.openai.com/api/docs/guides/prompt-caching) 请求体 `prompt_cache_key`、[OpenRouter](https://openrouter.ai/docs/guides/best-practices/prompt-caching) 请求体 `session_id`、OpenCode 请求头 `x-opencode-session`；未知兼容端点不发额外参数，代理域名不自动推断上游。各家隔离 / 路由语义不同，标识不能保证缓存命中，仍取决于提示前缀、模型及服务端缓存策略。
 - `CloudGlossFiller`：释义兜底（Core `GlossFiller` trait，与 Predictor 分开的线程与通道，攒 1.5 秒 / 8 个词发一次，问过不再问）：
   随包释义表没有的词库词 / 云端词上屏后入队，结果壳每秒 `Engine::poll_glosses` 经 `Translator::learn` 写进 `qingjian-translate::PersonalGlossary`
   （`user-glossary-<语言>.tsv`，`LayeredTranslator` 个人表优先）；由 `[predict.gloss] enabled/channel` 独立配置，`build_gloss_filler` 按渠道装配。
