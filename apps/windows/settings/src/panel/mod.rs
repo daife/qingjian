@@ -24,7 +24,7 @@ use self::pages::{
 use self::recorder::Recorder;
 
 /// 左侧标签固定宽度，让各行控件对齐。
-const LABEL_WIDTH: f64 = 140.0;
+const LABEL_WIDTH: f64 = 280.0;
 
 /// 设置窗口状态。
 pub(crate) struct Settings {
