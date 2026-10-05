@@ -22,14 +22,14 @@ const MAX_SENSES: usize = 2;
 /// 单个中文释义最多几个字：再长是解释不是对应词。
 const MAX_SENSE_CHARS: usize = 8;
 
-const SYSTEM_PROMPT: &str = "你是英汉词典编纂者。给每个英文词写最简短的中文对应词，供输入法在英文候选旁边一行显示，所以只要词、不要解释。\n\
+const SYSTEM_PROMPT: &str = "你是英汉词典编纂者。逐词给简短中文对应词，只给译词，不解释。\n\
 规则：\n\
-- pos：这个英文词最主要的词性，只能是 n. v. adj. adv. pron. prep. conj. num. int. phr. 之一（abbr. 缩写也写 n.，短语写 phr.）。\n\
-- zh：1 到 2 个最贴切的中文对应词，按常用度排；每个不超过 6 个字；不要括号、不要解释、不要例句；多义词只取最常用的义项。\n\
+- pos：主要词性： n. v. adj. adv. pron. prep. conj. num. int. phr. 之一（abbr. 缩写也写 n.，短语写 phr.）。\n\
+- zh：1–2 个常用中文对应词，常用优先；每个不超过 6 个字；无括号、解释、例句；多义词取常用义。\n\
 - 专名照译（GitHub → GitHub，Python → Python）；技术词、缩写给业内通行的中文说法（kubectl → K8s 命令行、CDN → 内容分发网络）；\
-没有把握也要给最可能的答案，不要留空。\n\
+不确定取最可能译法，不留空。\n\
 输出严格的 JSON：{\"items\":[{\"w\":\"develop\",\"pos\":\"v.\",\"zh\":[\"开发\",\"发展\"]}]}。\n\
-items 与输入的词一一对应、顺序一致、每个词恰好一项，w 必须原样照抄输入的词。";
+items 按输入顺序逐词一项，w 原样保留。";
 
 struct EnglishTask;
 

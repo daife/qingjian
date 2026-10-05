@@ -57,6 +57,7 @@ impl LlmClient {
         let response = tokio::time::timeout(self.timeout, self.client.chat().create(body))
             .await
             .map_err(|_| GlossError::Timeout(self.timeout.as_secs()))??;
+        tracing::debug!(usage = ?response.usage, "模型 token 用量");
         response
             .choices
             .into_iter()

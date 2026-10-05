@@ -64,7 +64,7 @@ impl ChatClient {
         let user = prompt::user_prompt(request);
         tracing::debug!(sequence = request.sequence, %user, "联想请求");
         let content = self
-            .chat(prompt::system_prompt(request), &user, MAX_TOKENS)
+            .chat(&prompt::system_prompt(request), &user, MAX_TOKENS)
             .await?;
         Ok(prompt::parse_reply(&content, request))
     }
@@ -98,6 +98,7 @@ impl ChatClient {
                 .await
                 .map_err(|_| PredictError::Timeout(self.timeout.as_millis() as u64))??;
         let response: CreateChatCompletionResponse = serde_json::from_value(raw.clone())?;
+        tracing::debug!(usage = ?response.usage, "模型 token 用量");
         let cut_off = response
             .choices
             .iter()

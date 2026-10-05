@@ -13,12 +13,12 @@ use crate::entry::PinyinEntry;
 use crate::error::GlossError;
 use crate::store::Store;
 
-const SYSTEM_PROMPT: &str = "你是普通话审音专家。给每个中文词标注拼音，供拼音输入法建词库用。\n\
+const SYSTEM_PROMPT: &str = "你是普通话审音专家。给每个中文词标注拼音，\n\
 规则：\n\
 - 多音字按这个词里的实际读音（重庆 chong2 qing4，长沙 chang2 sha1，蚌埠 beng4 bu4，行长 hang2 zhang3，六安 lu4 an1）；地名、人名、专业术语按通行读法。\n\
 - 每个汉字恰好一个音节，音节之间空格，带声调数字 1–4，轻声 5；ü 写 v（女 nv3，略 lve4）；儿化的「儿」单独一个音节 er。\n\
-- 不要解释，没有把握也要给最可能的读音。\n\
-输出严格的 JSON：{\"items\":[{\"w\":\"重庆\",\"py\":\"chong2 qing4\"}]}。items 与输入的词一一对应、顺序一致、每个词恰好一项，w 必须原样照抄输入的词。";
+- 不要解释，不确定取最可能读音。\n\
+输出严格的 JSON：{\"items\":[{\"w\":\"重庆\",\"py\":\"chong2 qing4\"}]}。items 按输入顺序逐词一项，w 原样保留。";
 
 /// 拼音任务。
 struct PinyinTask;
