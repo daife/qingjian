@@ -83,7 +83,7 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
         ),
         field(
             "原样上屏（Enter）：短按松开时触发",
-            "回车将正在输入的拼音、编码或英文原样上屏，不选择候选。注音模式下回车上屏高亮候选，Shift + Enter 原样上屏注音。开启时短按松开触发，关闭时按下触发；超过阈值执行长按动作，长按关闭则不触发。",
+            "回车将正在输入的拼音、编码或英文原样上屏，不选择候选。注音模式下回车上屏高亮候选，Shift + Enter 原样上屏注音。开启时短按松开触发，关闭时按下触发；按住达到阈值立即执行一次长按动作，无需松开；长按关闭则不触发。",
             ToggleSwitch::new()
                 .is_on(s.enter_release())
                 .is_enabled(!s.enter_hold.enabled())
@@ -91,7 +91,7 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
         ),
         field(
             "候选上屏（Space）：短按松开时触发",
-            "空格上屏当前高亮候选；无候选时原样上屏，辅码筛选为空时保留输入。英文选词后保留空格，英文直输段原样上屏并加空格；注音待补声调时输入一声。开启时短按松开触发，关闭时按下触发；超过阈值执行长按动作，长按关闭则不触发。",
+            "空格上屏当前高亮候选；无候选时原样上屏，辅码筛选为空时保留输入。英文选词后保留空格，英文直输段原样上屏并加空格；注音待补声调时输入一声。开启时短按松开触发，关闭时按下触发；按住达到阈值立即执行一次长按动作，无需松开；长按关闭则不触发。",
             ToggleSwitch::new()
                 .is_on(s.space_release())
                 .is_enabled(!s.space_hold.enabled())

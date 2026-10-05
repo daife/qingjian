@@ -33,7 +33,7 @@ pub struct InputSettings {
     #[serde(default)]
     pub space_hold_enabled: bool,
 
-    /// 短按的最长按住时间（毫秒），超过时松开不触发。
+    /// 短按 / 长按分界（毫秒），达到时触发长按，松开不再触发。
     #[serde(default = "default_short_press_ms")]
     pub short_press_ms: u64,
 

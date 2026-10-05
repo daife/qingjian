@@ -29,7 +29,7 @@ pub struct ShortcutConfig {
     /// Windows：长按空格的动作，默认在输入内容中添加空格。
     pub space_hold: CommitAction,
 
-    /// 短按的最长按住时间（毫秒），超过时松开不触发。
+    /// 短按 / 长按分界（毫秒），达到时触发长按，松开不再触发。
     pub short_press_ms: u64,
 
     /// 数字键配这些修饰键：上屏候选的第一个译词。

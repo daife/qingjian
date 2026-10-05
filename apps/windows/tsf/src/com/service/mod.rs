@@ -136,6 +136,11 @@ pub(super) fn on_thread_focus(foreground: bool) {
     with_active(|service| service.set_thread_focus(foreground));
 }
 
+/// 长按定时器到期，在 TSF 线程上转发按下时保存的事件。
+pub(super) fn on_hold_timer() {
+    with_active(TextService_Impl::fire_hold);
+}
+
 /// 轮询发现前台会话没连着 Server（见 [`super::poll`]）：补连一次。
 pub(super) fn on_reconnect_tick() {
     with_active(|service| {

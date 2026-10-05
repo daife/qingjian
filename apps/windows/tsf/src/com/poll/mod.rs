@@ -29,6 +29,7 @@ const CLASS_NAME: PCWSTR = w!("QingjianPollWindow");
 static CLASS: WindowClass = WindowClass::new();
 
 const TIMER_ID: usize = 1;
+const HOLD_TIMER_ID: usize = 2;
 const INTERVAL_MS: u32 = 80;
 
 /// 没在组句时每几拍问一次状态条的切模式请求（320 ms 一次，点了状态条肉眼看不出延迟）。
@@ -46,6 +47,12 @@ pub(crate) struct PollTimer {
 }
 
 impl PollTimer {
+    pub(crate) fn arm_hold(&self, threshold_ms: u64) {
+        unsafe {
+            SetTimer(Some(self.hwnd), HOLD_TIMER_ID, threshold_ms as u32, None);
+        }
+    }
+
     /// 失败返回 `Err`，调用方降级为只在按键时收云结果。
     pub(crate) fn new(engine: SharedClient, shared: Rc<Shared>) -> Result<Self> {
         CLASS.ensure(|| WNDCLASSEXW {
@@ -93,13 +100,21 @@ impl Drop for PollTimer {
         TIMERS.with(|timers| timers.borrow_mut().remove(&(self.hwnd.0 as isize)));
         unsafe {
             let _ = KillTimer(Some(self.hwnd), TIMER_ID);
+            let _ = KillTimer(Some(self.hwnd), HOLD_TIMER_ID);
             let _ = DestroyWindow(self.hwnd);
         }
     }
 }
 
 unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if msg == WM_TIMER {
+    if msg == WM_TIMER && wparam.0 == HOLD_TIMER_ID {
+        unsafe {
+            let _ = KillTimer(Some(hwnd), HOLD_TIMER_ID);
+        }
+        let _ = catch_unwind(AssertUnwindSafe(super::service::on_hold_timer));
+        return LRESULT(0);
+    }
+    if msg == WM_TIMER && wparam.0 == TIMER_ID {
         // 先 clone 出来放开表的借用。
         let context = TIMERS.with(|timers| timers.borrow().get(&(hwnd.0 as isize)).cloned());
         if let Some(context) = context {

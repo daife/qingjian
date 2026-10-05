@@ -58,6 +58,12 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         {
             self.release_keys
                 .begin(event, context.clone(), lparam.0 & (1 << 30) != 0);
+            let input = self.input_settings.get().unwrap_or_default();
+            if self.hold_enabled(vk)
+                && let Some(timer) = self.poll_timer.borrow().as_ref()
+            {
+                timer.arm_hold(input.short_press_ms);
+            }
             return Ok(true.into());
         }
         Ok(self.handle_key(pic, event).into())
@@ -76,16 +82,8 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
             return Ok(FALSE);
         }
         let input = self.input_settings.get().unwrap_or_default();
-        let long_enabled = !self.shared.translating()
-            && match vk {
-                0x0d => input.enter_hold_enabled,
-                0x20 => input.space_hold_enabled,
-                _ => false,
-            };
         if let Ok(context) = pic.ok() {
-            if let Some(event) =
-                self.release_keys
-                    .finish(vk, context, input.short_press_ms, long_enabled)
+            if let Some(event) = self.release_keys.finish(vk, context, input.short_press_ms)
                 && (self.shared.composing() || self.shared.translating())
                 && !self.keyboard_disabled(&pic)
             {
@@ -121,6 +119,29 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
 }
 
 impl TextService_Impl {
+    fn hold_enabled(&self, vk: u32) -> bool {
+        let input = self.input_settings.get().unwrap_or_default();
+        !self.shared.translating()
+            && match vk {
+                0x0d => input.enter_hold_enabled,
+                0x20 => input.space_hold_enabled,
+                _ => false,
+            }
+    }
+
+    pub(super) fn fire_hold(&self) {
+        let input = self.input_settings.get().unwrap_or_default();
+        for (event, context) in self.release_keys.due(input.short_press_ms) {
+            let pic = Ref::from(&context);
+            if self.shared.composing()
+                && self.hold_enabled(event.virtual_key)
+                && !self.keyboard_disabled(&pic)
+            {
+                self.handle_key(pic, event);
+            }
+        }
+    }
+
     /// 没在组句时看上下文有没有禁键盘（密码框）：禁了整键放行、不组句。组句中不看——那段组句是我们自己的，
     /// 应用要禁会先终止它。每键两次 compartment 读取，微秒级。
     fn keyboard_disabled(&self, pic: &Ref<ITfContext>) -> bool {

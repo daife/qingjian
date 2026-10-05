@@ -1,4 +1,4 @@
-//! 固定回车 / 空格的短按判定。测试回调只查询，实际按下 / 松开回调才登记或取走。
+//! 固定回车 / 空格的按住状态：定时触发长按，松开只触发短按。
 
 use std::cell::RefCell;
 use std::time::{Duration, Instant};
@@ -24,7 +24,7 @@ fn slot(vk: u32) -> Option<usize> {
 }
 
 fn short_press(started: Instant, now: Instant, threshold: Duration, cancelled: bool) -> bool {
-    !cancelled && now.duration_since(started) <= threshold
+    !cancelled && now.duration_since(started) < threshold
 }
 
 impl ReleaseKeys {
@@ -71,15 +71,8 @@ impl ReleaseKeys {
         vk: u32,
         context: &ITfContext,
         threshold_ms: u64,
-        long_enabled: bool,
     ) -> Option<KeyEvent> {
-        self.finish_at(
-            vk,
-            Some(context),
-            threshold_ms,
-            long_enabled,
-            Instant::now(),
-        )
+        self.finish_at(vk, Some(context), threshold_ms, Instant::now())
     }
 
     fn finish_at(
@@ -87,26 +80,48 @@ impl ReleaseKeys {
         vk: u32,
         context: Option<&ITfContext>,
         threshold_ms: u64,
-        long_enabled: bool,
         now: Instant,
     ) -> Option<KeyEvent> {
         let press = self.pending.borrow_mut()[slot(vk)?].take()?;
         if press.cancelled || press.context.as_ref() != context {
             return None;
         }
-        let long_press = !short_press(
+        if !short_press(
             press.started,
             now,
             Duration::from_millis(threshold_ms),
             false,
-        );
-        if long_press && !long_enabled {
+        ) {
             return None;
         }
-        Some(KeyEvent {
-            long_press,
-            ..press.event
-        })
+        Some(press.event)
+    }
+
+    pub(crate) fn due(&self, threshold_ms: u64) -> Vec<(KeyEvent, ITfContext)> {
+        self.due_at(threshold_ms, Instant::now())
+            .into_iter()
+            .filter_map(|(event, context)| context.map(|context| (event, context)))
+            .collect()
+    }
+
+    fn due_at(&self, threshold_ms: u64, now: Instant) -> Vec<(KeyEvent, Option<ITfContext>)> {
+        let mut events = Vec::new();
+        for press in self.pending.borrow_mut().iter_mut().flatten() {
+            if !press.cancelled
+                && now.duration_since(press.started) >= Duration::from_millis(threshold_ms)
+            {
+                // 保留按住状态吞掉重复与松开；转发前标记，防止编辑会话重入再次触发。
+                press.cancelled = true;
+                events.push((
+                    KeyEvent {
+                        long_press: true,
+                        ..press.event
+                    },
+                    press.context.clone(),
+                ));
+            }
+        }
+        events
     }
 
     pub(crate) fn discard(&self, vk: u32) {
@@ -133,17 +148,17 @@ mod tests {
         assert!(keys.held(0x20));
         assert!(keys.held(0x20)); // TestKeyUp 不取走状态
         assert!(
-            keys.finish_at(0x20, None, 500, false, start + Duration::from_millis(501))
+            keys.finish_at(0x20, None, 500, start + Duration::from_millis(501))
                 .is_none()
         );
         assert!(!keys.held(0x20));
         keys.begin_at(event(0x0d), None, false, start);
         assert!(
-            keys.finish_at(0x0d, None, 500, false, start + Duration::from_millis(100))
+            keys.finish_at(0x0d, None, 500, start + Duration::from_millis(100))
                 .is_some()
         );
         assert!(
-            keys.finish_at(0x0d, None, 500, false, start + Duration::from_millis(100))
+            keys.finish_at(0x0d, None, 500, start + Duration::from_millis(100))
                 .is_none()
         );
     }
@@ -156,43 +171,63 @@ mod tests {
             keys.begin_at(event(0x20), None, false, start);
             keys.note_down(other_key);
             assert!(keys.held(0x20));
-            assert!(keys.finish_at(0x20, None, 500, false, start).is_none());
+            assert!(
+                keys.due_at(500, start + Duration::from_millis(500))
+                    .is_empty()
+            );
+            assert!(keys.finish_at(0x20, None, 500, start).is_none());
         }
         keys.begin_at(event(0x0d), None, false, start);
         keys.cancel();
         assert!(keys.held(0x0d));
-        assert!(keys.finish_at(0x0d, None, 500, false, start).is_none());
+        assert!(keys.finish_at(0x0d, None, 500, start).is_none());
         keys.begin_at(event(0x20), None, true, start);
-        assert!(keys.finish_at(0x20, None, 500, false, start).is_none());
+        assert!(keys.finish_at(0x20, None, 500, start).is_none());
     }
 
     #[test]
-    fn long_press_is_exclusive_and_preserves_the_original_event() {
+    fn long_press_fires_at_threshold_once_without_release() {
         let keys = ReleaseKeys::default();
         let start = Instant::now();
         for vk in [0x0d, 0x20] {
             keys.begin_at(event(vk), None, false, start);
-            let result = keys
-                .finish_at(vk, None, 500, true, start + Duration::from_millis(501))
-                .unwrap();
-            assert!(result.long_press);
-            assert_eq!(result.virtual_key, vk);
-            assert!(!keys.held(vk));
             assert!(
-                keys.finish_at(vk, None, 500, true, start + Duration::from_millis(600))
+                keys.due_at(500, start + Duration::from_millis(499))
+                    .is_empty()
+            );
+            let result = keys.due_at(500, start + Duration::from_millis(500));
+            assert_eq!(result.len(), 1);
+            assert!(result[0].0.long_press);
+            assert_eq!(result[0].0.virtual_key, vk);
+            assert_eq!(result[0].0.character, event(vk).character);
+            assert!(keys.held(vk));
+            keys.begin_at(event(vk), None, true, start + Duration::from_millis(550));
+            assert!(
+                keys.due_at(500, start + Duration::from_millis(600))
+                    .is_empty()
+            );
+            assert!(
+                keys.finish_at(vk, None, 500, start + Duration::from_millis(600))
                     .is_none()
             );
+            assert!(!keys.held(vk));
             keys.begin_at(event(vk), None, false, start);
             assert!(
-                !keys
-                    .finish_at(vk, None, 500, true, start + Duration::from_millis(500))
-                    .unwrap()
-                    .long_press
+                keys.finish_at(vk, None, 500, start + Duration::from_millis(499))
+                    .is_some()
+            );
+            assert!(
+                keys.due_at(500, start + Duration::from_millis(500))
+                    .is_empty()
             );
             keys.begin_at(event(vk), None, false, start);
             keys.cancel();
             assert!(
-                keys.finish_at(vk, None, 500, true, start + Duration::from_millis(600))
+                keys.due_at(500, start + Duration::from_millis(600))
+                    .is_empty()
+            );
+            assert!(
+                keys.finish_at(vk, None, 500, start + Duration::from_millis(600))
                     .is_none()
             );
         }
@@ -202,7 +237,7 @@ mod tests {
     fn threshold_and_cancellation() {
         let start = Instant::now();
         let threshold = Duration::from_millis(500);
-        assert!(short_press(start, start + threshold, threshold, false));
+        assert!(!short_press(start, start + threshold, threshold, false));
         assert!(!short_press(
             start,
             start + threshold + Duration::from_millis(1),

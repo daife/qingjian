@@ -55,7 +55,7 @@ pub struct RouterConfig {
 
     pub space_hold: CommitAction,
 
-    /// 短按的最长按住时间（毫秒），超过时松开不触发。
+    /// 短按 / 长按分界（毫秒），达到时触发长按，松开不再触发。
     pub short_press_ms: u64,
 
     /// 中英切换键（`[shortcut] switch_mode`）：由 Server 经协议下发给 DLL，由它认键。
