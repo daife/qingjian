@@ -368,3 +368,7 @@ Windows 固定空格 / 回车触发方式：`[shortcut] enter_on_release` / `spa
 `[predict] translation_commit_fallback` 默认 false，Windows/macOS 云服务页提供「译词上屏托底（整句包含在内）」。与选区快捷键开关独立，复用 `[predict.translation] channel`：渠道工厂在选区翻译或托底任一开启时创建服务，Engine 分别控制两个入口。`commit_translation` 完全无非空译词时提交 Translate 请求，候选（含 Sentence / Generated）、输入全文、光标、请求序号与开始时间保存在 `commit::TranslationCommit`。`poll_translation_commit` 在非私密、输入未变、请求未作废且 90 秒内收取结果，成功后按原候选调用 `commit_with` 消耗输入，返回译文给壳上屏，不写成个人释义；无候选时壳调用 `commit_buffer_translation`，翻译整个缓冲区，成功后清空全部输入（不受光标作用域限制）；失败保留输入。已有第一条但缺第二条时不请求。Core 和壳在编辑、普通上屏、取消、焦点或渠道切换时作废。
 
 Windows Poll 经协议 `Update.commit` 回到 TSF 的当前编辑上下文；v7 及更老 DLL 不启动托底，提示重新打开应用。macOS 短期 NSTimer 持有原控制器与客户端，并按请求序号隔离不同托底；只负责轮询 Core 与写入文档。预测轮询在托底未完成时不读取选区渠道，避免抢走翻译回复。
+
+### 英文句组按键
+
+`[general] english_compose_space` / `english_compose_enter` / `english_compose_punctuation` 缺省 false，Windows 与 macOS 通用页提供独立勾选框。三端装配配置时调用 `Engine::set_english_composition`，按键收录判定统一由 `english_composes` 提供，仅英文候选模式生效。回车收录为换行，标点开关优先于符号翻页键（包括下划线、连字符、撇号）；关闭时标点直接上屏。Tab 仍可上屏，无候选时取整个原始缓冲区；Windows 长按动作保持独立。

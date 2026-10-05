@@ -81,6 +81,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     engine.set_shuangpin_raw_preedit(config.general.shuangpin_raw_preedit);
     engine.set_zhuyin_mode(config.general.is_zhuyin());
     engine.set_shift_letter_compose(config.general.shift_letter.compose());
+    engine.set_english_composition(
+        config.general.english_compose_space,
+        config.general.english_compose_enter,
+        config.general.english_compose_punctuation,
+    );
     engine.set_learning(config.general.learning);
     engine.set_chinese_first(config.general.chinese_first);
     engine.set_mode_keys(config.shortcut.mode);

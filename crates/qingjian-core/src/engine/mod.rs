@@ -10,6 +10,7 @@ mod commit;
 mod composing;
 mod correcting;
 mod decoded;
+mod english_input;
 mod extras;
 mod gloss;
 mod input_log;
@@ -124,6 +125,9 @@ pub struct Engine {
     /// 中文模式下 Shift+字母进组句缓冲区（配置 `[general] shift_letter = "compose"`，缺省关）。
     /// 关着由壳直接把大写字母交给应用，Core 这一路就不该收——否则 `Cpan` 这种会被当成拼音。
     shift_letter_compose: bool,
+
+    /// 英文模式下空格、回车、标点是否进入句组，依次对应三个配置项。
+    english_compose: [bool; 3],
 
     /// 联想提供方，缺省为 [`NoPredictor`]。
     predictor: Box<dyn Predictor>,
@@ -407,6 +411,7 @@ impl Engine {
             custom_phrases: Vec::new(),
             chinese_first: false,
             shift_letter_compose: false,
+            english_compose: [false; 3],
             predictor: Box::new(NoPredictor),
             language_model: Box::new(NoLanguageModel),
             sentence_scorer: None,

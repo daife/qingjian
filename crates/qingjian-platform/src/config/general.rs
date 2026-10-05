@@ -52,6 +52,15 @@ pub struct GeneralConfig {
     /// 英文模式（Caps Lock 亮着）是否给英文候选（补全与拼错纠正）。关掉就是纯直通。
     pub english_candidates: bool,
 
+    /// 英文模式的空格进入句组，缺省直接上屏。
+    pub english_compose_space: bool,
+
+    /// 英文模式的回车以换行进入句组，缺省原样上屏。
+    pub english_compose_enter: bool,
+
+    /// 英文模式的标点进入句组，缺省直接上屏。
+    pub english_compose_punctuation: bool,
+
     /// 繁体输出模式。
     pub traditional: bool,
     /// 中文模式下中英混输时中文候选总排在英文词前面。缺省关：拼音不像话的输入（`hello`）英文词排第一，
@@ -129,6 +138,9 @@ impl Default for GeneralConfig {
             font: String::new(),
             preedit: PreeditMode::default(),
             english_candidates: true,
+            english_compose_space: false,
+            english_compose_enter: false,
+            english_compose_punctuation: false,
             traditional: false,
             chinese_first: false,
             shift_letter: ShiftLetter::default(),
@@ -293,6 +305,22 @@ mod tests {
         assert!(!general.horizontal_grid);
         let general: GeneralConfig = toml::from_str("horizontal_grid = true\n").unwrap();
         assert!(general.horizontal_grid);
+    }
+
+    #[test]
+    fn english_composition_defaults_off_and_round_trips_independently() {
+        let legacy: GeneralConfig = toml::from_str("english_candidates = true\n").unwrap();
+        assert!(!legacy.english_compose_space);
+        assert!(!legacy.english_compose_enter);
+        assert!(!legacy.english_compose_punctuation);
+        let configured: GeneralConfig = toml::from_str(
+            "english_compose_space = true\nenglish_compose_enter = false\nenglish_compose_punctuation = true\n",
+        ).unwrap();
+        assert!(configured.english_compose_space);
+        assert!(!configured.english_compose_enter);
+        assert!(configured.english_compose_punctuation);
+        let saved = toml::to_string(&configured).unwrap();
+        assert_eq!(toml::from_str::<GeneralConfig>(&saved).unwrap(), configured);
     }
 
     #[test]

@@ -218,6 +218,11 @@ impl Router {
         self.engine.set_chinese_first(config.general.chinese_first);
         self.engine
             .set_shift_letter_compose(config.general.shift_letter.compose());
+        self.engine.set_english_composition(
+            config.general.english_compose_space,
+            config.general.english_compose_enter,
+            config.general.english_compose_punctuation,
+        );
         self.engine
             .set_shuangpin_raw_preedit(config.general.shuangpin_raw_preedit);
         let previous = self.config.render_settings();

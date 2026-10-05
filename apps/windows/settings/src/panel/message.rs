@@ -14,6 +14,9 @@ pub(crate) enum Message {
     Wubi(bool),
     Traditional(bool),
     EnglishCandidates(bool),
+    EnglishComposeSpace(bool),
+    EnglishComposeEnter(bool),
+    EnglishComposePunctuation(bool),
     ChineseFirst(bool),
     /// 中文模式下 Shift+字母：交给应用（缺省）还是进组句缓冲区。
     ShiftLetter(Option<usize>),

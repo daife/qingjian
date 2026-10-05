@@ -117,7 +117,10 @@ impl Router {
                 Effect::Changed(None)
             }
             codes::RETURN => {
-                if self.engine.is_zhuyin_mode() {
+                if self.engine.english_composes('\n') {
+                    self.engine.push('\n');
+                    Effect::Changed(None)
+                } else if self.engine.is_zhuyin_mode() {
                     if event.modifiers.shift {
                         Effect::Changed(Some(self.engine.take_raw()))
                     } else {
@@ -227,7 +230,7 @@ impl Router {
 
     /// 英文模式。开着候选：字母进缓冲区，选词与中文模式一样（空格选高亮、数字选当前页第 N 个、翻页键翻页），
     /// 词上屏后空格照样交给应用；数字对应的格子没有候选（词表没有的词、候选不足 N 个）时是标识符的一部分（`foo1`）。
-    /// 回车 / 标点先把字母原样上屏。关着候选：字母由我们插入（大小写按 Shift）。
+    /// 空格 / 回车 / 标点可配置进入句组；未收录的回车 / 标点先把字母原样上屏。关着候选：字母由我们插入（大小写按 Shift）。
     /// 其他键按英文模式那份全角设置转，转不了的交给应用。
     fn apply_english(&mut self, c: char, candidates: bool, event: &KeyEvent) -> Effect {
         let composing = self.composing();
@@ -241,15 +244,17 @@ impl Router {
             };
             return with_prefix(raw, effect, c);
         }
+        if self.engine.english_composes(c) {
+            self.engine.push(c);
+            return Effect::Changed(None);
+        }
         if composing
             && let Some(digit) = codes::digit(event)
             && let Some(index) = self.slot_index(digit)
         {
             return Effect::Changed(self.commit_index(index));
         }
-        if c.is_ascii_alphabetic()
-            || (composing && (c.is_ascii_digit() || matches!(c, '_' | '\'' | '-')))
-        {
+        if c.is_ascii_alphabetic() || (composing && c.is_ascii_digit()) {
             self.engine.push(c);
             return Effect::Changed(None);
         }

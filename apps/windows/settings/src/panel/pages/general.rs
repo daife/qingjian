@@ -135,6 +135,27 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 .on_toggled(context.callback(Message::EnglishOffInApps)),
         ),
         field(
+            "英文输入",
+            "勾选后进入句组；未勾选时直接上屏。回车以换行进入句组。需开启英文候选，在终端等关闭候选的应用中不生效；Tab 仍可上屏。",
+            StackPanel::new().spacing(8.0).children([
+                CheckBox::new()
+                    .is_checked(g.english_compose_space)
+                    .is_enabled(g.english_candidates)
+                    .on_is_checked_changed(context.callback(Message::EnglishComposeSpace))
+                    .content("空格进入句组"),
+                CheckBox::new()
+                    .is_checked(g.english_compose_enter)
+                    .is_enabled(g.english_candidates)
+                    .on_is_checked_changed(context.callback(Message::EnglishComposeEnter))
+                    .content("回车进入句组"),
+                CheckBox::new()
+                    .is_checked(g.english_compose_punctuation)
+                    .is_enabled(g.english_candidates)
+                    .on_is_checked_changed(context.callback(Message::EnglishComposePunctuation))
+                    .content("标点进入句组"),
+            ]),
+        ),
+        field(
             "输入拼音时中文候选排在英文词前面",
             "开着时整段输入是英文词时（hello、key）英文词排第二，空格上屏的仍是中文；关着（缺省）拼音不成立的输入英文词排第一。",
             ToggleSwitch::new()

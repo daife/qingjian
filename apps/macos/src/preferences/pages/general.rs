@@ -34,6 +34,12 @@ pub struct GeneralPage {
     /// 英文模式也给候选。
     english: Retained<NSButton>,
 
+    english_compose_space: Retained<NSButton>,
+
+    english_compose_enter: Retained<NSButton>,
+
+    english_compose_punctuation: Retained<NSButton>,
+
     /// 终端 / 编辑器里不给英文候选。
     english_off_in_apps: Retained<NSButton>,
 
@@ -158,6 +164,24 @@ impl GeneralPage {
             mtm,
             "终端、iTerm、Warp、Ghostty、VS Code、Cursor、Zed、JetBrains、Xcode 等，那里的候选窗口会挡住应用自己的补全；名单可在配置文件里改。",
         );
+        note(
+            layout,
+            mtm,
+            "英文输入：勾选的键进入句组，未勾选时直接上屏。回车以换行收录；Tab 仍可上屏。需开启英文候选。 ",
+        );
+        let english_compose_space =
+            checkbox(mtm, "空格进入句组", Setting::EnglishComposeSpace, target);
+        row_checkbox(layout, &english_compose_space);
+        let english_compose_enter =
+            checkbox(mtm, "回车进入句组", Setting::EnglishComposeEnter, target);
+        row_checkbox(layout, &english_compose_enter);
+        let english_compose_punctuation = checkbox(
+            mtm,
+            "标点进入句组",
+            Setting::EnglishComposePunctuation,
+            target,
+        );
+        row_checkbox(layout, &english_compose_punctuation);
         let chinese_first = checkbox(
             mtm,
             "输入拼音时中文候选排在英文词前面",
@@ -190,6 +214,9 @@ impl GeneralPage {
             shuangpin_raw_preedit,
             traditional,
             english,
+            english_compose_space,
+            english_compose_enter,
+            english_compose_punctuation,
             english_off_in_apps,
             chinese_first,
             shift_letter,
@@ -230,6 +257,18 @@ impl GeneralPage {
             .setEnabled(general.scheme().is_shuangpin());
         set_checked(&self.traditional, general.traditional);
         set_checked(&self.english, general.english_candidates);
+        set_checked(&self.english_compose_space, general.english_compose_space);
+        set_checked(&self.english_compose_enter, general.english_compose_enter);
+        set_checked(
+            &self.english_compose_punctuation,
+            general.english_compose_punctuation,
+        );
+        self.english_compose_space
+            .setEnabled(general.english_candidates);
+        self.english_compose_enter
+            .setEnabled(general.english_candidates);
+        self.english_compose_punctuation
+            .setEnabled(general.english_candidates);
         set_checked(
             &self.english_off_in_apps,
             config.apps.has_english_candidates_off(),

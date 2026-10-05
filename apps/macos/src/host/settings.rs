@@ -406,6 +406,18 @@ impl Host {
             (Setting::EnglishCandidates, SettingValue::Bool(on)) => {
                 self.settings.set_bool("general", "english_candidates", on);
             }
+            (Setting::EnglishComposeSpace, SettingValue::Bool(on)) => {
+                self.settings
+                    .set_bool("general", "english_compose_space", on);
+            }
+            (Setting::EnglishComposeEnter, SettingValue::Bool(on)) => {
+                self.settings
+                    .set_bool("general", "english_compose_enter", on);
+            }
+            (Setting::EnglishComposePunctuation, SettingValue::Bool(on)) => {
+                self.settings
+                    .set_bool("general", "english_compose_punctuation", on);
+            }
             (Setting::ChineseFirst, SettingValue::Bool(on)) => {
                 self.settings.set_bool("general", "chinese_first", on);
             }

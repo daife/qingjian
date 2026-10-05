@@ -184,6 +184,11 @@ fn main() {
     engine.set_aux_show(config.general.aux_code_show);
     engine.set_chinese_first(config.general.chinese_first);
     engine.set_shift_letter_compose(config.general.shift_letter.compose());
+    engine.set_english_composition(
+        config.general.english_compose_space,
+        config.general.english_compose_enter,
+        config.general.english_compose_punctuation,
+    );
     engine.set_shuangpin_raw_preedit(config.general.shuangpin_raw_preedit);
     engine.log_session(env!("CARGO_PKG_VERSION"), "windows");
     dispatch::attach_cloud(&mut engine, &config.predict);

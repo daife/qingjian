@@ -149,6 +149,13 @@ pub enum Setting {
     /// `[general] english_candidates`，勾选框。
     EnglishCandidates,
 
+    /// 英文输入的空格、回车与标点进入句组。
+    EnglishComposeSpace,
+
+    EnglishComposeEnter,
+
+    EnglishComposePunctuation,
+
     /// `[general] chinese_first`，勾选框：中英混输时中文候选排在英文词前。
     ChineseFirst,
 
@@ -260,6 +267,9 @@ impl Setting {
             Self::Layout => 12,
             Self::Preedit => 13,
             Self::EnglishCandidates => 14,
+            Self::EnglishComposeSpace => 68,
+            Self::EnglishComposeEnter => 69,
+            Self::EnglishComposePunctuation => 70,
             Self::ChineseFirst => 42,
             Self::ShiftLetter => 50,
             Self::HorizontalGrid => 51,
@@ -337,6 +347,9 @@ impl Setting {
             12 => Self::Layout,
             13 => Self::Preedit,
             14 => Self::EnglishCandidates,
+            68 => Self::EnglishComposeSpace,
+            69 => Self::EnglishComposeEnter,
+            70 => Self::EnglishComposePunctuation,
             42 => Self::ChineseFirst,
             50 => Self::ShiftLetter,
             51 => Self::HorizontalGrid,
@@ -431,6 +444,9 @@ mod tests {
             Setting::Layout,
             Setting::Preedit,
             Setting::EnglishCandidates,
+            Setting::EnglishComposeSpace,
+            Setting::EnglishComposeEnter,
+            Setting::EnglishComposePunctuation,
             Setting::TranslationKeys,
             Setting::TranslationSecondKeys,
             Setting::TranslateSelectionKeys,

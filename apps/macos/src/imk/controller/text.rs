@@ -1,6 +1,9 @@
 //! 可打印字符的处理：中英文模式、直输段、表达式与问字模式的分流。
 
-use super::*;
+use super::QingjianInputController;
+use crate::host;
+use crate::imk::{TextClient, modifiers};
+use qingjian_core::QUESTION_PREFIX;
 
 impl QingjianInputController {
     pub(super) fn handle_text(&self, text: &str, client: TextClient<'_>) -> bool {
@@ -80,7 +83,12 @@ impl QingjianInputController {
                 host::with(|h| h.engine.note_passthrough(c));
                 return false;
             }
-            // 英文候选：字母（以及组词中的 _ ' -）进缓冲区，候选来自英文词表。选词与中文模式一样：
+            if host::with(|h| h.engine.english_composes(c)).unwrap_or(false) {
+                host::with(|h| h.engine.push(c));
+                self.refresh(client);
+                return true;
+            }
+            // 英文候选：字母与未选词的数字进缓冲区，已配置收录的标点在前面处理。选词与中文模式一样：
             // 空格选高亮（词上屏后空格照样交给应用，接着打下一个词）、数字选当前页第 N 个、翻页键翻页；
             // 数字对应的格子没有候选（kubectl 这类词表没有的词、候选不足 N 个）时是标识符的一部分（foo1）。
             // 回车、标点先把敲的字母原样上屏再交给应用
@@ -91,9 +99,7 @@ impl QingjianInputController {
             {
                 return self.commit_index(index, client);
             }
-            if c.is_ascii_alphabetic()
-                || (composing && (c.is_ascii_digit() || matches!(c, '_' | '\'' | '-')))
-            {
+            if c.is_ascii_alphabetic() || (composing && c.is_ascii_digit()) {
                 host::with(|h| h.engine.push(letter));
                 self.refresh(client);
                 return true;
