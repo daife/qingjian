@@ -53,6 +53,18 @@ pub enum Setting {
     /// `[predict] enabled`。
     CloudEnabled,
 
+    /// `[predict] scenarios_enabled`。
+    CloudScenariosEnabled,
+
+    /// `[predict] scenarios`。
+    CloudScenarios,
+
+    /// `[predict] sentence`。
+    CloudSentence,
+
+    /// `[predict] english_sentence`。
+    CloudEnglishSentence,
+
     /// `[model] enabled`。
     LocalModelEnabled,
 
@@ -209,6 +221,10 @@ impl Setting {
             Self::QuestionKey => 6,
             Self::QuestionMark => 41,
             Self::CloudEnabled => 7,
+            Self::CloudScenariosEnabled => 57,
+            Self::CloudScenarios => 58,
+            Self::CloudSentence => 59,
+            Self::CloudEnglishSentence => 60,
             Self::BaseUrl => 8,
             Self::Model => 9,
             Self::ApiKey => 10,
@@ -275,6 +291,10 @@ impl Setting {
             6 => Self::QuestionKey,
             41 => Self::QuestionMark,
             7 => Self::CloudEnabled,
+            57 => Self::CloudScenariosEnabled,
+            58 => Self::CloudScenarios,
+            59 => Self::CloudSentence,
+            60 => Self::CloudEnglishSentence,
             8 => Self::BaseUrl,
             9 => Self::Model,
             10 => Self::ApiKey,
@@ -353,6 +373,10 @@ mod tests {
             Setting::ExpressionKey,
             Setting::QuestionKey,
             Setting::CloudEnabled,
+            Setting::CloudScenariosEnabled,
+            Setting::CloudScenarios,
+            Setting::CloudSentence,
+            Setting::CloudEnglishSentence,
             Setting::LocalModelEnabled,
             Setting::UpdateCheck,
             Setting::UpdateChannel,

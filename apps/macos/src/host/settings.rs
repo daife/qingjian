@@ -343,6 +343,21 @@ impl Host {
             (Setting::CloudEnabled, SettingValue::Bool(on)) => {
                 self.settings.set_bool("predict", "enabled", on);
             }
+            (Setting::CloudSentence, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict", "sentence", on);
+            }
+            (Setting::CloudEnglishSentence, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict", "english_sentence", on);
+            }
+            (Setting::CloudScenariosEnabled, SettingValue::Bool(on)) => {
+                self.settings.set_bool("predict", "scenarios_enabled", on);
+            }
+            (Setting::CloudScenarios, SettingValue::Text(text)) => {
+                let text = text.trim();
+                if text != config.predict.scenarios {
+                    self.settings.set_value("predict", "scenarios", text);
+                }
+            }
             (Setting::LocalModelEnabled, SettingValue::Bool(on)) => {
                 self.settings.set_bool("model", "enabled", on);
             }

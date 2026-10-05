@@ -15,8 +15,11 @@ pub struct PredictionPolicy {
     /// 向云端最多要几条（比槽位多要几条，与本地候选重复的去掉后还能填满）。
     pub max_items: usize,
 
-    /// 组句中要不要整句补全。
+    /// 中文组句中要不要整句补全。
     pub sentence: bool,
+
+    /// 英文组句中要不要整句补全。
+    pub english_sentence: bool,
 }
 
 impl Default for PredictionPolicy {
@@ -27,6 +30,7 @@ impl Default for PredictionPolicy {
             slots: 2,
             max_items: 4,
             sentence: true,
+            english_sentence: true,
         }
     }
 }

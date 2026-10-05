@@ -35,8 +35,17 @@ pub struct PredictConfig {
     /// 云端词最多补进候选窗口第一页末尾几格；0 表示不要云端词，只要整句补全。
     pub slots: usize,
 
-    /// 组句中要不要整句补全。
+    /// 中文组句中要不要整句补全。
     pub sentence: bool,
+
+    /// 英文组句中要不要整句补全。
+    pub english_sentence: bool,
+
+    /// 是否把常用打字场景作为中英文联想与补全的参考。
+    pub scenarios_enabled: bool,
+
+    /// 用户填写的场景关键词，逗号、分号或换行分隔。
+    pub scenarios: String,
 
     /// 推理强度，随请求发 `reasoning_effort`：`none` 关掉模型的思考（联想要的是快，不是想），
     /// 其余 minimal / low / medium / high / xhigh 照传；留空则不发（给不认这个参数的接口）。
@@ -58,6 +67,9 @@ impl Default for PredictConfig {
             lookahead: 32,
             slots: 2,
             sentence: true,
+            english_sentence: true,
+            scenarios_enabled: false,
+            scenarios: String::new(),
             reasoning_effort: "none".to_owned(),
         }
     }
@@ -83,6 +95,7 @@ impl PredictConfig {
             // 比槽位多要两条，与本地候选重复的去掉后还能填满；问字模式的答案也按这个数要
             max_items: self.slots.max(1) + 2,
             sentence: self.sentence,
+            english_sentence: self.english_sentence,
         }
     }
 }

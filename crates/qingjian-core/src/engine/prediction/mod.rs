@@ -77,7 +77,7 @@ impl Engine {
         };
         let scope = self.composition.scope();
         if self.english_mode {
-            if !policy.sentence
+            if !policy.english_sentence
                 || scope.chars().filter(|c| c.is_ascii_alphabetic()).count()
                     < MIN_PREDICTION_LETTERS
             {

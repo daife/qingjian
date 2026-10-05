@@ -83,6 +83,8 @@ TSV 解析、查询与生成工具把 `lue` / `nue` 统一成 `lve` / `nve`。
 
 ## crates/qingjian-predict
 
+- `[predict] sentence` / `english_sentence` 分别控制中文 / 英文整句补全（默认均开启），`PredictionPolicy` 在 Core 发请求时分别检查，服务客户端与场景配置共用。
+- `[predict] scenarios_enabled` 默认关闭，`scenarios` 保存用户填写的场景（逗号 / 分号 / 换行分隔、去空去重）；仅 Compose / English 请求在用户 JSON 中带 `user_scenarios`，系统提示要求输入与即时上下文优先。客户端配置变化时与缓存一起重建，问字 / 翻译 / 释义不带场景。
 - `CloudPredictor`：`Predictor` trait 的网络实现（async-openai，OpenAI 兼容接口，默认 DeepSeek），后台线程防抖 / 缓存 / 超时，`submit` / `poll` 非阻塞。
   `PredictConfig` 是配置的 `[predict]` 分节。只在组句中联想，一次请求给云端词（容错校验后补进候选第一页末尾 `[predict] slots` 格，缺省 2，不预留不占位，
   前面的本地候选不挪；排布在 Core `CandidateLayout`）和整句补全（preedit 右侧，Tab）；上屏后不联想，本地历史不进请求。

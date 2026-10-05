@@ -65,11 +65,34 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 .on_value_changed(context.callback(Message::CloudSlots)),
         ),
         field(
-            "整句补全",
-            "preedit 右侧给出整句补全，按 Tab 采用。",
+            "中文整句补全",
+            "中文输入时给出整句补全，按 Tab 采用。",
             ToggleSwitch::new()
                 .is_on(p.sentence)
                 .on_toggled(context.callback(Message::CloudSentence)),
+        ),
+        field(
+            "英文整句补全",
+            "英文输入时给出整句补全，按 Tab 采用。",
+            ToggleSwitch::new()
+                .is_on(p.english_sentence)
+                .on_toggled(context.callback(Message::CloudEnglishSentence)),
+        ),
+        field(
+            "联想 & 整句补全场景",
+            "开启后，将填写的常用场景发送给云服务，供中英文联想和整句补全参考。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.scenarios_enabled)
+                .on_toggled(context.callback(Message::CloudScenariosEnabled)),
+        ),
+        field(
+            "常用场景",
+            "自行填写，用逗号或分号分隔，例如：日常聊天，我的世界游戏，IT 行业。",
+            TextBox::new()
+                .is_enabled(p.enabled && p.scenarios_enabled)
+                .text(p.scenarios.clone())
+                .on_text_changed(context.callback(Message::CloudScenarios)),
         ),
         field(
             "接口地址",

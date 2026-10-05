@@ -36,6 +36,9 @@ pub struct ChatClient {
     /// 模型名。
     model: String,
 
+    /// 当前客户端使用的场景；配置变化时客户端与缓存一起重建。
+    scenarios: String,
+
     /// 超时。
     timeout: Duration,
 
@@ -54,6 +57,11 @@ impl ChatClient {
         Self {
             client: Client::with_config(openai).with_http_client(http_client(&config.base_url)),
             model: config.model.clone(),
+            scenarios: if config.scenarios_enabled {
+                config.scenarios.clone()
+            } else {
+                String::new()
+            },
             timeout: Duration::from_millis(config.timeout_ms),
             reasoning_effort: parse_reasoning_effort(&config.reasoning_effort),
             thinking_switch: ThinkingSwitch::for_url(&config.base_url),
@@ -61,11 +69,9 @@ impl ChatClient {
     }
 
     pub async fn complete(&self, request: &PredictionRequest) -> Result<Reply, PredictError> {
-        let user = prompt::user_prompt(request);
+        let (system, user) = prompt::prediction_prompts(request, &self.scenarios);
         tracing::debug!(sequence = request.sequence, %user, "联想请求");
-        let content = self
-            .chat(&prompt::system_prompt(request), &user, MAX_TOKENS)
-            .await?;
+        let content = self.chat(&system, &user, MAX_TOKENS).await?;
         Ok(prompt::parse_reply(&content, request))
     }
 

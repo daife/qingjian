@@ -27,6 +27,18 @@ pub struct CloudPage {
     /// 云端词槽位数（0–4）。
     slots: Retained<NSPopUpButton>,
 
+    /// 中文整句补全开关。
+    sentence: Retained<NSButton>,
+
+    /// 英文整句补全开关。
+    english_sentence: Retained<NSButton>,
+
+    /// 场景参考开关。
+    scenarios_enabled: Retained<NSButton>,
+
+    /// 常用场景关键词。
+    scenarios: Retained<NSTextField>,
+
     /// 接口地址。
     base_url: Retained<NSTextField>,
 
@@ -75,6 +87,24 @@ impl CloudPage {
             mtm,
             "云端词到了只补进第一页末尾这几格（比如 2 就是 8、9），前面的本地候选不动；没到就什么都不变，翻页后全是本地候选。",
         );
+        let sentence = checkbox(mtm, "中文整句补全", Setting::CloudSentence, target);
+        row_checkbox(layout, &sentence);
+        let english_sentence = checkbox(mtm, "英文整句补全", Setting::CloudEnglishSentence, target);
+        row_checkbox(layout, &english_sentence);
+        let scenarios_enabled = checkbox(
+            mtm,
+            "联想 & 整句补全场景",
+            Setting::CloudScenariosEnabled,
+            target,
+        );
+        row_checkbox(layout, &scenarios_enabled);
+        let scenarios = text_field(mtm, Setting::CloudScenarios, target);
+        row_control(layout, mtm, "常用场景", &scenarios);
+        note(
+            layout,
+            mtm,
+            "自行填写，用逗号或分号分隔，如：日常聊天，我的世界游戏，IT 行业。开启后发送给云服务，供中英文联想与整句补全参考。",
+        );
         let base_url = text_field(mtm, Setting::BaseUrl, target);
         row_control(layout, mtm, "接口地址", &base_url);
         let model = text_field(mtm, Setting::Model, target);
@@ -98,6 +128,10 @@ impl CloudPage {
             local_model,
             enabled,
             slots,
+            sentence,
+            english_sentence,
+            scenarios_enabled,
+            scenarios,
             base_url,
             model,
             api_key,
@@ -113,6 +147,16 @@ impl CloudPage {
         set_checked(&self.enabled, config.predict.enabled);
         let cloud = config.predict.enabled;
         self.slots.setEnabled(cloud);
+        set_checked(&self.sentence, config.predict.sentence);
+        set_checked(&self.english_sentence, config.predict.english_sentence);
+        self.sentence.setEnabled(cloud);
+        self.english_sentence.setEnabled(cloud);
+        set_checked(&self.scenarios_enabled, config.predict.scenarios_enabled);
+        self.scenarios_enabled.setEnabled(cloud);
+        self.scenarios
+            .setEnabled(cloud && config.predict.scenarios_enabled);
+        self.scenarios
+            .setStringValue(&NSString::from_str(&config.predict.scenarios));
         self.base_url.setEnabled(cloud);
         self.model.setEnabled(cloud);
         self.api_key.setEnabled(cloud);

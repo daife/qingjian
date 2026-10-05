@@ -3,6 +3,7 @@
 mod aux_code;
 mod cloud;
 mod code;
+mod completion;
 mod correction;
 mod custom;
 mod emoji;
@@ -156,6 +157,7 @@ impl Predictor for EchoPredictor {
             slots: 2,
             max_items: 2,
             sentence: self.sentence,
+            english_sentence: self.sentence,
         }
     }
 

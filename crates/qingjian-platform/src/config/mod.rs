@@ -350,6 +350,11 @@ lookahead = 32
 slots = 2
 # 组句中除了词候选还要不要整句补全（preedit 右侧，Tab 接受）
 sentence = true
+# 英文整句补全独立开关（Tab 接受）
+english_sentence = true
+# 常用场景参考：开启后随中英文联想 / 整句补全请求发送；逗号、分号或换行分隔
+scenarios_enabled = false
+scenarios = ""
 
 [status_bar]
 # 桌面上常驻、可拖动的悬浮状态条（Windows）：「中 / 英」格点一下切换模式（开着双拼时还显示方案名）、「，。」格切全角 / 半角标点、齿轮打开设置。
