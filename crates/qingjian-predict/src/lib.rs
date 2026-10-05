@@ -15,6 +15,7 @@ mod error;
 mod gloss;
 mod prompt;
 mod worker;
+mod youdao;
 
 pub use cloud_predictor::CloudPredictor;
 pub use config::PredictConfig;

@@ -43,3 +43,30 @@ fn legacy_config_preserves_behavior_and_translation_tasks_round_trip() {
         serde_json::from_str::<PredictConfig>(r#"{"translation":{"channel":"unknown"}}"#).is_err()
     );
 }
+
+#[test]
+fn youdao_channels_are_independent_and_need_no_llm_credentials() {
+    let mut config = PredictConfig {
+        enabled: true,
+        api_key: None,
+        api_key_env: "QINGJIAN_TEST_MISSING_TRANSLATION_KEY".into(),
+        ..Default::default()
+    };
+    config.translation.channel = TranslationChannel::YoudaoPublic;
+    assert!(build_selection_translator(&config).unwrap().is_enabled());
+    assert!(build_gloss_filler(&config).is_err());
+    config.gloss.channel = TranslationChannel::YoudaoPublic;
+    config.translation.channel = TranslationChannel::Llm;
+    assert!(build_gloss_filler(&config).unwrap().is_enabled());
+    assert!(build_selection_translator(&config).is_err());
+    config.translation.channel = TranslationChannel::YoudaoPublic;
+    let encoded = serde_json::to_string(&config).unwrap();
+    assert!(encoded.contains("youdao_public"));
+    assert_eq!(
+        serde_json::from_str::<PredictConfig>(&encoded).unwrap(),
+        config
+    );
+    config.enabled = false;
+    assert!(!build_gloss_filler(&config).unwrap().is_enabled());
+    assert!(!build_selection_translator(&config).unwrap().is_enabled());
+}

@@ -21,5 +21,10 @@ pub fn build_gloss_filler(
     }
     match config.gloss.channel {
         TranslationChannel::Llm => Ok(Box::new(CloudGlossFiller::new(config)?)),
+        TranslationChannel::YoudaoPublic => {
+            Ok(Box::new(crate::youdao::YoudaoGlossFiller::new(config)?))
+        }
     }
 }
+
+pub(crate) use prompt::clean_text;

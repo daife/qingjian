@@ -23,4 +23,18 @@ pub enum PredictError {
 
     #[error("failed to encode request: {0}")]
     Encode(#[from] serde_json::Error),
+
+    #[error("Youdao HTTP request failed: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("Youdao business error: {0}")]
+    YoudaoBusiness(String),
+
+    #[error("invalid Youdao response")]
+    YoudaoResponse,
+
+    #[error(
+        "Youdao requires nonempty text of at most 1000 characters and a supported target language"
+    )]
+    YoudaoInput,
 }

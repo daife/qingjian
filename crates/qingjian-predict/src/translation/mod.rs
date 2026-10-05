@@ -18,6 +18,9 @@ pub fn build_selection_translator(
         TranslationChannel::Llm => Ok(Box::new(cloud_translator::CloudSelectionTranslator::new(
             config,
         )?)),
+        TranslationChannel::YoudaoPublic => Ok(Box::new(
+            crate::youdao::YoudaoSelectionTranslator::new(config)?,
+        )),
     }
 }
 

@@ -130,7 +130,7 @@ pub fn parse_reply(content: &str, language: Language, words: &[String]) -> Vec<F
 }
 
 /// 译词清洗：去首尾标点，太长、含括号的当解释丢掉。
-fn clean_text(raw: &str, language: Language) -> Option<String> {
+pub(crate) fn clean_text(raw: &str, language: Language) -> Option<String> {
     let text = raw
         .trim()
         .trim_end_matches(['.', ';', ',', '。', '；', '，'])

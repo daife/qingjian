@@ -102,7 +102,10 @@ TSV 解析、查询与生成工具把 `lue` / `nue` 统一成 `lve` / `nve`。
   （`user-glossary-<语言>.tsv`，`LayeredTranslator` 个人表优先）；由 `[predict.gloss] enabled/channel` 独立配置，`build_gloss_filler` 按渠道装配。
 - 问字键（缺省 `u`）开头是问字模式（`PredictionKind::Question`，答案带读音、不校验拼音），`?` 开头要 `ModeKeys::question_mark` 开着才算（配置 `[shortcut] question_mark`，缺省关，壳用 `Engine::takes_question_mark` 决定空缓冲区的 `?` 是入口还是标点）；`PredictionKind::Translate` 是壳里快捷键触发的「翻译选中文字」
   （双向：汉字为主译成学习语言，外文译回中文，`prediction::translation_target`），译文走结果的 `sentence`。
-- 选区翻译单独使用 Core `SelectionTranslator` trait，与 `Predictor` / `GlossFiller` 分别注入；`[predict.translation] enabled/channel` 控制 `build_selection_translator`。两种翻译渠道当前均为 `llm`（共用大模型服务配置），独立线程；未来翻译服务只需实现对应非阻塞 trait 并扩展渠道装配，不必实现联想。`predict.enabled` 总开关关闭时三种提供方均换空实现。
+- 选区翻译单独使用 Core `SelectionTranslator` trait，与 `Predictor` / `GlossFiller` 分别注入；`[predict.translation] enabled/channel` 控制 `build_selection_translator`。两种翻译均可独立选择 `llm`（共用大模型服务配置）或 `youdao_public`（Youdao公共渠道，无需密钥），独立线程；翻译服务只需实现对应非阻塞 trait 并扩展渠道装配，不必实现联想。`predict.enabled` 总开关关闭时三种提供方均换空实现。
+
+- `youdao/`：两个非阻塞提供方共用 `POST https://aidemo.youdao.com/trans`，urlencoded `q/from/to`，保留网页 Origin / Referer、不跟随重定向、不注入 Cookie 或密钥；中文代码映射 `zh` → `zh-CHS`，释义源语言固定中文，选区源语言 auto、目标遵循 Core。`errorCode` 必须为字符串 / 数字 0 且 `translation` 为非空字符串数组，否则记错误，不落盘或自动换渠道。
+  协议参考本地 `D:/Documents/ChatGPT/Youdao_public/docs/{api-reference,usage,languages}.md`（2026-10-03 观测，非正式 OpenAPI）。两个功能进程内共用异步锁，串行且请求起点至少相隔 6 秒；HTTP 429 或业务 410/411/413 后暂停 60 秒，不自动重试。超时沿用 `[predict] timeout_ms`，不含排队时间。选区只保留最新待处理请求，成功译文缓存 64 项；释义按语言 / 词进程内去重，复用短译词清洗，只保存一条无词性 / 无读音译词。默认测试用本地 HTTP 验证，公网测试手动运行 `cargo test -p qingjian-predict live_translation_directions -- --ignored --nocapture`。
 
 ## crates/qingjian-format
 
