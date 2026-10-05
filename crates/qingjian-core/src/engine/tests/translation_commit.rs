@@ -178,3 +178,43 @@ fn fallback_can_use_the_channel_with_selection_hotkey_disabled() {
     reply(&sent, &replies, Some("develop"));
     assert_eq!(engine.poll_translation_commit().as_deref(), Some("develop"));
 }
+
+#[test]
+fn buffer_translation_consumes_whole_english_sentence_even_with_cursor_in_middle() {
+    let (mut engine, sent, replies) = setup();
+    engine.set_english_mode(true);
+    engine.set_input("hello world, how are you?");
+    engine.move_cursor_home();
+    engine.move_cursor_right();
+    assert!(engine.commit_buffer_translation().is_none());
+    assert_eq!(sent.lock().unwrap()[0].text, "hello world, how are you?");
+    assert_eq!(sent.lock().unwrap()[0].target_language, "zh");
+    reply(&sent, &replies, Some("你好世界，你好吗？"));
+    assert_eq!(
+        engine.poll_translation_commit().as_deref(),
+        Some("你好世界，你好吗？")
+    );
+    assert!(engine.composition().is_empty());
+}
+
+#[test]
+fn buffer_translation_failure_and_edits_preserve_input() {
+    for edited in [false, true] {
+        let (mut engine, sent, replies) = setup();
+        engine.set_english_mode(true);
+        engine.set_input("hello world");
+        engine.commit_buffer_translation();
+        if edited {
+            engine.push('!');
+        }
+        let before = engine.composition().text().to_owned();
+        reply(
+            &sent,
+            &replies,
+            if edited { Some("过期译文") } else { None },
+        );
+        assert!(engine.poll_translation_commit().is_none());
+        assert_eq!(engine.composition().text(), before);
+        assert!(!engine.translation_commit_pending());
+    }
+}

@@ -61,26 +61,31 @@ impl Router {
 
     /// 上屏第 `digit` 个候选的第 `sense` 条译文；没有那条译文就吞掉按键不动。
     fn commit_translation_on_page(&mut self, digit: usize, sense: usize) -> Effect {
-        let Some(candidate) = self.annotated_candidate_on_page(digit) else {
-            tracing::debug!(digit, "这一格没有候选");
-            return Effect::Navigated;
-        };
+        let candidate = self.annotated_candidate_on_page(digit);
         if self.focused.is_some_and(|session| {
             self.sessions
                 .get(&session)
                 .is_some_and(|info| info.protocol < TRANSLATION_COMMIT_SINCE)
         }) && self.engine.translation_commit_fallback_enabled()
-            && !candidate.translation.as_ref().is_some_and(|translation| {
-                translation
-                    .senses()
-                    .iter()
-                    .any(|sense| !sense.text.trim().is_empty())
-            })
+            && !candidate
+                .as_ref()
+                .and_then(|candidate| candidate.translation.as_ref())
+                .is_some_and(|translation| {
+                    translation
+                        .senses()
+                        .iter()
+                        .any(|sense| !sense.text.trim().is_empty())
+                })
         {
             self.notice = Some("请重新打开当前应用以使用译词上屏托底".to_owned());
             return Effect::Navigated;
         }
-        match self.engine.commit_translation(&candidate, sense) {
+        let text = match candidate {
+            Some(candidate) => self.engine.commit_translation(&candidate, sense),
+            None if self.candidate_count() == 0 => self.engine.commit_buffer_translation(),
+            None => return Effect::Navigated,
+        };
+        match text {
             Some(text) => Effect::Changed(Some(text)),
             None => {
                 if self.engine.translation_commit_pending() {

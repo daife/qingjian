@@ -88,8 +88,12 @@ impl QingjianInputController {
                 .and_then(|index| h.session.candidate(index))
         })
         .flatten();
-        let text = candidate
-            .and_then(|c| host::with(|h| h.engine.commit_translation(&c, sense)).flatten());
+        let text = host::with(|h| match candidate {
+            Some(candidate) => h.engine.commit_translation(&candidate, sense),
+            None if h.session.candidate(0).is_none() => h.engine.commit_buffer_translation(),
+            None => None,
+        })
+        .flatten();
         match text {
             Some(text) => {
                 tracing::debug!(%text, "commit translation");

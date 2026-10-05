@@ -184,3 +184,33 @@ fn english_tab_accepts_sentence_before_local_word() {
         Some("hello world")
     );
 }
+
+#[test]
+fn translation_hold_with_no_candidates_submits_the_whole_buffer() {
+    struct Service;
+    impl qingjian_core::SelectionTranslator for Service {
+        fn submit(&mut self, request: qingjian_core::PredictionRequest) {
+            assert_eq!(request.text, "hello world");
+        }
+        fn poll(&mut self) -> Option<qingjian_core::Prediction> {
+            None
+        }
+    }
+    let mut router = router(5);
+    key(&mut router, 0, None, KeyModifiers::default());
+    router.engine.set_selection_translator(Box::new(Service));
+    router.engine.set_translation_commit_fallback(true);
+    router.engine.set_english_mode(true);
+    router.engine.set_input("hello world");
+    router.recompose();
+    let result = router.handle(ClientMessage::Key {
+        session: SessionId(1),
+        event: KeyEvent {
+            long_press: true,
+            ..KeyEvent::new(13, None, KeyModifiers::default())
+        },
+    });
+    assert!(result.is_some());
+    assert!(router.engine.translation_commit_pending());
+    assert_eq!(router.engine.composition().text(), "hello world");
+}

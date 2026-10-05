@@ -2,11 +2,12 @@
 
 use std::time::{Duration, Instant};
 
+use super::LastCommit;
 use crate::engine::input_log::InputSource;
 use crate::{Candidate, Engine};
 
 pub(in crate::engine) struct TranslationCommit {
-    candidate: Candidate,
+    candidate: Option<Candidate>,
 
     sequence: u64,
 
@@ -53,12 +54,26 @@ impl Engine {
         if !self.translation_commit_fallback || has_translation || self.composition.is_empty() {
             return;
         }
+        self.start_translation_commit(&candidate.text, Some(candidate.clone()));
+    }
+
+    /// 没有候选时翻译整个缓冲区；成功前不消耗输入。
+    pub fn commit_buffer_translation(&mut self) -> Option<String> {
+        if !self.translation_commit_fallback || self.composition.is_empty() {
+            return None;
+        }
+        let input = self.composition.text().to_owned();
+        self.start_translation_commit(&input, None);
+        None
+    }
+
+    fn start_translation_commit(&mut self, text: &str, candidate: Option<Candidate>) {
         self.cancel_translation_commit();
-        let Some(sequence) = self.submit_translation(&candidate.text) else {
+        let Some(sequence) = self.submit_translation(text) else {
             return;
         };
         self.translation_commit = Some(TranslationCommit {
-            candidate: candidate.clone(),
+            candidate,
             sequence,
             input: self.composition.text().to_owned(),
             cursor: self.composition.cursor(),
@@ -85,7 +100,16 @@ impl Engine {
             }
             let pending = self.translation_commit.take()?;
             let text = reply.sentence.filter(|text| !text.trim().is_empty())?;
-            self.commit_with(&pending.candidate, InputSource::Translation, None);
+            if let Some(candidate) = pending.candidate {
+                self.commit_with(&candidate, InputSource::Translation, None);
+            } else {
+                self.log_commit(&pending.input, &text, InputSource::Translation);
+                self.meter_commit(&text, InputSource::Translation, false);
+                self.clear();
+                self.remember_commit(LastCommit::plain(&text));
+                self.punctuation.note_committed(&text);
+                self.history.record(&text);
+            }
             return Some(text);
         }
         None
