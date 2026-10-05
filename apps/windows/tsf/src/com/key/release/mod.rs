@@ -71,8 +71,10 @@ impl ReleaseKeys {
         vk: u32,
         context: &ITfContext,
         threshold_ms: u64,
+        hold_enabled: bool,
     ) -> Option<KeyEvent> {
         self.finish_at(vk, Some(context), threshold_ms, Instant::now())
+            .filter(|event| !event.long_press || hold_enabled)
     }
 
     fn finish_at(
@@ -92,9 +94,32 @@ impl ReleaseKeys {
             Duration::from_millis(threshold_ms),
             false,
         ) {
-            return None;
+            // WM_TIMER 优先级低，松开可能先到；已达到阈值时兜底执行长按。
+            return Some(KeyEvent {
+                long_press: true,
+                ..press.event
+            });
         }
         Some(press.event)
+    }
+
+    pub(crate) fn remaining_ms(&self, threshold_ms: u64) -> Option<u64> {
+        self.remaining_at(threshold_ms, Instant::now())
+    }
+
+    fn remaining_at(&self, threshold_ms: u64, now: Instant) -> Option<u64> {
+        self.pending
+            .borrow()
+            .iter()
+            .flatten()
+            .filter(|press| !press.cancelled)
+            .map(|press| {
+                let remaining = Duration::from_millis(threshold_ms)
+                    .saturating_sub(now.duration_since(press.started));
+                remaining.as_millis() as u64
+                    + u64::from(!remaining.subsec_nanos().is_multiple_of(1_000_000))
+            })
+            .min()
     }
 
     pub(crate) fn due(&self, threshold_ms: u64) -> Vec<(KeyEvent, ITfContext)> {
@@ -149,7 +174,8 @@ mod tests {
         assert!(keys.held(0x20)); // TestKeyUp 不取走状态
         assert!(
             keys.finish_at(0x20, None, 500, start + Duration::from_millis(501))
-                .is_none()
+                .unwrap()
+                .long_press
         );
         assert!(!keys.held(0x20));
         keys.begin_at(event(0x0d), None, false, start);
@@ -230,6 +256,23 @@ mod tests {
                 keys.finish_at(vk, None, 500, start + Duration::from_millis(600))
                     .is_none()
             );
+        }
+    }
+
+    #[test]
+    fn early_timer_keeps_deadline_and_late_release_fires_once() {
+        for vk in [0x0d, 0x20] {
+            let keys = ReleaseKeys::default();
+            let start = Instant::now();
+            keys.begin_at(event(vk), None, false, start);
+            let early = start + Duration::from_micros(499_500);
+            assert!(keys.due_at(500, early).is_empty());
+            assert_eq!(keys.remaining_at(500, early), Some(1));
+            let deadline = start + Duration::from_millis(500);
+            assert!(keys.finish_at(vk, None, 500, deadline).unwrap().long_press);
+            assert!(keys.due_at(500, deadline).is_empty());
+            assert_eq!(keys.remaining_at(500, deadline), None);
+            assert!(keys.finish_at(vk, None, 500, deadline).is_none());
         }
     }
 

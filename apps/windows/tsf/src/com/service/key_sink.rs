@@ -83,7 +83,9 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         }
         let input = self.input_settings.get().unwrap_or_default();
         if let Ok(context) = pic.ok() {
-            if let Some(event) = self.release_keys.finish(vk, context, input.short_press_ms)
+            if let Some(event) =
+                self.release_keys
+                    .finish(vk, context, input.short_press_ms, self.hold_enabled(vk))
                 && (self.shared.composing() || self.shared.translating())
                 && !self.keyboard_disabled(&pic)
             {
@@ -139,6 +141,12 @@ impl TextService_Impl {
             {
                 self.handle_key(pic, event);
             }
+        }
+        // 系统定时器可能提前到达；按原始截止时间补下一拍，不能停表后丢掉长按。
+        if let Some(remaining_ms) = self.release_keys.remaining_ms(input.short_press_ms)
+            && let Some(timer) = self.poll_timer.borrow().as_ref()
+        {
+            timer.arm_hold(remaining_ms.max(1));
         }
     }
 
