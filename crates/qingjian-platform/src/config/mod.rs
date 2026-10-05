@@ -164,9 +164,9 @@ switch_mode = ["shift"]
 enter_on_release = true
 space_on_release = true
 short_press_ms = 500
-# 长按动作：none / candidate / raw / first_translation；开启后对应短按强制松开触发
-enter_hold = "none"
-space_hold = "first_translation"
+# 长按动作：none / candidate / raw / first_translation / insert_space；开启后对应短按强制松开触发
+enter_hold = "first_translation"
+space_hold = "insert_space"
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（option / shift / control / command 用 + 连），偏好设置里点按钮录制；别用 control+数字（系统切桌面）和 command+数字（应用切标签页）
 translation = "option"
@@ -191,9 +191,9 @@ switch_mode = ["shift"]
 enter_on_release = true
 space_on_release = true
 short_press_ms = 500
-# 长按动作：none / candidate / raw / first_translation；开启后对应短按强制松开触发
-enter_hold = "none"
-space_hold = "first_translation"
+# 长按动作：none / candidate / raw / first_translation / insert_space；开启后对应短按强制松开触发
+enter_hold = "first_translation"
+space_hold = "insert_space"
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（alt / shift / ctrl / win 用 + 连）。Alt+数字会被 Windows 当菜单快捷键截走，缺省用 Ctrl；组句时才拦，不打字时照常放行给应用
 translation = "ctrl"

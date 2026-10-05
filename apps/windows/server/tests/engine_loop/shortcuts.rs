@@ -81,7 +81,7 @@ fn held_key(vk: u32) -> KeyEvent {
 }
 
 #[test]
-fn held_space_commits_the_highlighted_translation_on_another_page() {
+fn held_enter_commits_the_highlighted_translation_on_another_page() {
     let mut router = router_with(RouterConfig {
         page_size: 1,
         ..RouterConfig::default()
@@ -91,7 +91,7 @@ fn held_space_commits_the_highlighted_translation_on_another_page() {
     // 第二页的「你」：不能误选首选「你好」，译词上屏后保留未消耗的 hao。
     let (_, _, frame) = press(&mut router, function_key(0x28));
     assert_eq!(frame.candidates.items[frame.highlight].text, "你");
-    let (outcome, commit, after) = press(&mut router, held_key(0x20));
+    let (outcome, commit, after) = press(&mut router, held_key(0x0d));
     assert_eq!(
         (outcome, commit.as_deref()),
         (KeyOutcome::Consumed, Some("you"))
@@ -100,16 +100,16 @@ fn held_space_commits_the_highlighted_translation_on_another_page() {
 }
 
 #[test]
-fn held_space_without_a_translation_preserves_input() {
+fn held_enter_without_a_translation_preserves_input() {
     let mut router = router();
     type_letters(&mut router, "no-way");
-    let (outcome, commit, after) = press(&mut router, held_key(0x20));
+    let (outcome, commit, after) = press(&mut router, held_key(0x0d));
     assert_eq!((outcome, commit), (KeyOutcome::Consumed, None));
     assert_eq!(preedit(&after), "no-way");
 }
 
 #[test]
-fn held_enter_is_disabled_by_default_and_supports_raw_and_candidate_actions() {
+fn held_enter_supports_configured_actions() {
     use qingjian_platform::CommitAction;
     for (action, expected) in [
         (CommitAction::None, None),
@@ -146,4 +146,22 @@ fn server_settings_force_release_with_hold_enabled() {
         }
         other => panic!("expected ModeSync, got {other:?}"),
     }
+}
+
+#[test]
+fn held_space_keeps_an_english_sentence_and_inserts_at_cursor() {
+    let mut router = router();
+    type_english(&mut router, "hello");
+    let mut space = held_key(0x20);
+    space.modifiers = ENGLISH;
+    let (outcome, commit, frame) = press(&mut router, space);
+    assert_eq!((outcome, commit), (KeyOutcome::Consumed, None));
+    assert_eq!(preedit(&frame), "hello ");
+    type_english(&mut router, "world");
+    press(&mut router, KeyEvent::new(0x25, None, ENGLISH));
+    let (_, commit, frame) = press(&mut router, space);
+    assert_eq!(commit, None);
+    assert_eq!(preedit(&frame), "hello worl 'd");
+    let (_, commit, _) = press(&mut router, function_key(0x0d));
+    assert_eq!(commit.as_deref(), Some("hello worl d"));
 }

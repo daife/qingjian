@@ -19,6 +19,11 @@ impl Router {
             _ => return Effect::Navigated,
         };
         match action {
+            CommitAction::InsertSpace => {
+                self.engine.clear_aux();
+                self.engine.push(' ');
+                Effect::Changed(None)
+            }
             CommitAction::None => Effect::Navigated,
             CommitAction::Candidate => match self.commit_index(self.highlight) {
                 Some(text) => Effect::Changed(Some(text)),

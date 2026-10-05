@@ -169,3 +169,18 @@ fn disabled_digit_shortcuts_release_chords_and_keep_normal_selection() {
         Some("第1项".to_owned())
     );
 }
+
+#[test]
+fn english_tab_accepts_sentence_before_local_word() {
+    let mut router = router(5);
+    let english = KeyModifiers {
+        english_mode: true,
+        ..Default::default()
+    };
+    compose(&mut router, "hello", english);
+    router.sentence = Some("hello world".into());
+    assert_eq!(
+        key(&mut router, 9, None, english).1.as_deref(),
+        Some("hello world")
+    );
+}

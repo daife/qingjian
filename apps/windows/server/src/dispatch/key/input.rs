@@ -131,7 +131,7 @@ impl Router {
                 self.page(-1);
                 Effect::Navigated
             }
-            codes::TAB if self.engine.english_mode() => {
+            codes::TAB if self.engine.english_mode() && self.sentence.is_none() => {
                 Effect::Changed(Some(self.commit_highlighted()))
             }
             // 中文模式 Tab：有整句补全就接受，否则下一页。

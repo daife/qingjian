@@ -56,6 +56,9 @@ text（选中的原文）、target_language（目标语言代码：zh 中文、e
 
 pub fn system_prompt(request: &PredictionRequest) -> &'static str {
     match request.kind {
+        PredictionKind::English => {
+            "Complete the English text in letters naturally using before and after as context. Return the full replacement for letters, preserving the typed prefix and its spaces. Do not repeat before or after. Return only JSON: {\"sentence\": \"completed English text\"}."
+        }
         PredictionKind::Compose => SYSTEM_PROMPT,
         PredictionKind::Question => QUESTION_SYSTEM_PROMPT,
         PredictionKind::Translate => TRANSLATE_SYSTEM_PROMPT,
@@ -181,7 +184,10 @@ pub fn parse_reply(content: &str, request: &PredictionRequest) -> Reply {
     if request.kind == PredictionKind::Question {
         return parse_answers(raw.answers, request.max_items);
     }
-    if request.kind == PredictionKind::Translate {
+    if matches!(
+        request.kind,
+        PredictionKind::Translate | PredictionKind::English
+    ) {
         // 译文保留换行（原文可能是多段），只去首尾空白
         return Reply {
             words: Vec::new(),
@@ -293,6 +299,22 @@ mod tests {
             text: String::new(),
             target_language: String::new(),
         }
+    }
+
+    #[test]
+    fn english_completion_preserves_spaces_and_needs_no_pinyin() {
+        let mut request = request("", true);
+        request.kind = PredictionKind::English;
+        request.letters = "hello ".into();
+        let prompt: serde_json::Value = serde_json::from_str(&user_prompt(&request)).unwrap();
+        assert_eq!(prompt["letters"], "hello ");
+        let reply = parse_reply(
+            r#"{"sentence":"hello world","words":[{"text":"wrong","pinyin":""}]}"#,
+            &request,
+        );
+        assert_eq!(reply.sentence.as_deref(), Some("hello world"));
+        assert!(reply.words.is_empty());
+        assert!(system_prompt(&request).contains("English"));
     }
 
     #[test]

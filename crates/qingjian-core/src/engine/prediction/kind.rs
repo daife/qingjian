@@ -10,4 +10,7 @@ pub enum PredictionKind {
 
     /// 翻译：把应用里选中的一段文字译成学习语言（壳里快捷键触发），译文放在结果的 `sentence` 里。
     Translate,
+
+    /// 英文输入的整句补全，不请求拼音候选。
+    English,
 }

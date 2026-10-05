@@ -569,3 +569,34 @@ fn restoring_question_preserves_other_compositions() {
         assert!(engine.passthrough_pending.is_empty());
     }
 }
+
+#[test]
+fn english_sentence_requests_completion_without_pinyin_conversion() {
+    let submitted = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+    let predictor = EchoPredictor {
+        submitted: submitted.clone(),
+        replies: vec![Prediction {
+            sequence: 1,
+            words: Vec::new(),
+            sentence: Some("hello world".into()),
+        }],
+        sentence: true,
+    };
+    let mut engine = self::engine().with_predictor(Box::new(predictor));
+    engine.set_english_mode(true);
+    for c in "hello ".chars() {
+        engine.push(c);
+    }
+    assert_eq!(engine.request_prediction(None, &[]), Some(1));
+    let request = submitted.borrow()[0].clone();
+    assert_eq!(request.kind, PredictionKind::English);
+    assert_eq!(request.letters, "hello ");
+    assert!(request.pinyin.is_empty());
+    assert!(request.want_sentence);
+    let prediction = engine.poll_prediction().unwrap();
+    assert_eq!(
+        engine.accept_prediction(prediction.sentence.as_deref().unwrap()),
+        "hello world"
+    );
+    assert!(engine.composition().is_empty());
+}

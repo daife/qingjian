@@ -59,7 +59,7 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
     let rows = [
         field(
             "长按空格（Space）",
-            "按键固定，超过阈值后松开执行。启用后空格选词改为短按松开触发；没有译词时保留输入内容。",
+            "按键固定，超过阈值后松开执行。启用后空格选词改为短按松开触发；默认在输入内容的光标位置添加一个空格，继续输入整句；未在输入时按键仍交给应用。",
             ComboBox::new()
                 .items_source(CommitAction::ALL.iter().map(|action| action.label()))
                 .selected_index(
@@ -71,7 +71,7 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
         ),
         field(
             "长按回车（Enter）",
-            "按键固定，超过阈值后松开执行。启用后回车原样上屏改为短按松开触发（注音模式为选词）。",
+            "按键固定，超过阈值后松开执行。启用后回车原样上屏改为短按松开触发（注音模式为选词）。默认上屏高亮候选的首个译词，没有译词时保留输入。",
             ComboBox::new()
                 .items_source(CommitAction::ALL.iter().map(|action| action.label()))
                 .selected_index(

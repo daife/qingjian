@@ -1,4 +1,4 @@
-//! 固定空格 / 回车长按时执行的上屏动作。
+//! 固定空格 / 回车长按时执行的动作。
 
 use serde::{Deserialize, Serialize};
 
@@ -10,14 +10,16 @@ pub enum CommitAction {
     Candidate,
     Raw,
     FirstTranslation,
+    InsertSpace,
 }
 
 impl CommitAction {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::None,
         Self::Candidate,
         Self::Raw,
         Self::FirstTranslation,
+        Self::InsertSpace,
     ];
 
     pub const fn enabled(self) -> bool {
@@ -30,6 +32,7 @@ impl CommitAction {
             Self::Candidate => "candidate",
             Self::Raw => "raw",
             Self::FirstTranslation => "first_translation",
+            Self::InsertSpace => "insert_space",
         }
     }
 
@@ -39,6 +42,7 @@ impl CommitAction {
             Self::Candidate => "高亮候选上屏",
             Self::Raw => "原样上屏",
             Self::FirstTranslation => "高亮候选的首个译词上屏",
+            Self::InsertSpace => "在输入内容中添加一个空格",
         }
     }
 }

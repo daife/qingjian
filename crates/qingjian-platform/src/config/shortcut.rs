@@ -23,10 +23,10 @@ pub struct ShortcutConfig {
     /// Windows：空格选词（注音待补声调时输入一声）在短按松开时触发，固定键不可重绑。
     pub space_on_release: bool,
 
-    /// Windows：长按回车的动作，关闭时不执行。
+    /// Windows：长按回车的动作，默认上屏高亮候选的首个译词。
     pub enter_hold: CommitAction,
 
-    /// Windows：长按空格的动作，默认上屏高亮候选的首个译词。
+    /// Windows：长按空格的动作，默认在输入内容中添加空格。
     pub space_hold: CommitAction,
 
     /// 短按的最长按住时间（毫秒），超过时松开不触发。
@@ -55,8 +55,8 @@ impl Default for ShortcutConfig {
         Self {
             enter_on_release: true,
             space_on_release: true,
-            enter_hold: CommitAction::None,
-            space_hold: CommitAction::FirstTranslation,
+            enter_hold: CommitAction::FirstTranslation,
+            space_hold: CommitAction::InsertSpace,
             short_press_ms: 500,
             mode: ModeKeys::default(),
             switch_mode: SwitchKeys::default(),
@@ -109,7 +109,8 @@ mod tests {
     fn fixed_commit_keys_default_to_release_and_round_trip_settings() {
         let old: ShortcutConfig = toml::from_str("").unwrap();
         assert!(old.enter_on_release && old.space_on_release);
-        assert_eq!(old.space_hold, CommitAction::FirstTranslation);
+        assert_eq!(old.enter_hold, CommitAction::FirstTranslation);
+        assert_eq!(old.space_hold, CommitAction::InsertSpace);
         assert_eq!(old.short_press_ms, 500);
         let config: ShortcutConfig = toml::from_str(
             "enter_on_release = true\nspace_on_release = true\nshort_press_ms = 750\n",

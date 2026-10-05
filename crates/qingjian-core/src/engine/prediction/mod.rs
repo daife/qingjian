@@ -28,7 +28,15 @@ pub use response::Prediction;
 pub use script::translation_target;
 pub use surrounding_text::SurroundingText;
 
-use super::*;
+use super::{
+    Engine, MIN_PREDICTION_LETTERS, PREDICTION_CANDIDATE_HINTS, is_raw, query,
+    segment_longest_prefix, take_first_chars, take_last_chars,
+};
+use crate::candidate::Candidate;
+use crate::engine::commit::LastCommit;
+use crate::engine::input_log::{InputLogEntry, InputLogger, InputSource};
+use crate::parser::{self, Segmentation};
+use crate::{sentence, shortcut};
 
 impl Engine {
     /// 是否接了会联想的 Predictor；壳据此决定要不要起轮询定时器、画云朵标识。
@@ -68,8 +76,34 @@ impl Engine {
             None => (String::new(), String::new()),
         };
         let scope = self.composition.scope();
-        if self.english_mode
-            || self.modes().is_expression(scope, self.zhuyin)
+        if self.english_mode {
+            if !policy.sentence
+                || scope.chars().filter(|c| c.is_ascii_alphabetic()).count()
+                    < MIN_PREDICTION_LETTERS
+            {
+                return None;
+            }
+            let request = PredictionRequest {
+                sequence: self.prediction_sequence,
+                kind: PredictionKind::English,
+                before,
+                after,
+                pinyin: String::new(),
+                letters: scope.to_owned(),
+                syllables: 0,
+                candidates: Vec::new(),
+                guess: String::new(),
+                max_items: 0,
+                want_sentence: true,
+                text: scope.to_owned(),
+                target_language: String::new(),
+            };
+            self.last_prediction_kind = PredictionKind::English;
+            self.last_prediction_scope = scope.to_owned();
+            self.predictor.submit(request);
+            return Some(self.prediction_sequence);
+        }
+        if self.modes().is_expression(scope, self.zhuyin)
             || is_raw(scope, self.modes(), self.shuangpin, self.zhuyin)
         {
             return None;
@@ -210,8 +244,14 @@ impl Engine {
                         });
                     }
                 }
+                if self.last_prediction_kind == PredictionKind::English {
+                    prediction.words.clear();
+                }
                 if self.traditional
-                    && self.last_prediction_kind != PredictionKind::Translate
+                    && !matches!(
+                        self.last_prediction_kind,
+                        PredictionKind::Translate | PredictionKind::English
+                    )
                     && let Some(opencc) = &self.opencc
                 {
                     for word in &mut prediction.words {
