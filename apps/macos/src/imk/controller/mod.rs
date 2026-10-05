@@ -221,7 +221,8 @@ impl QingjianInputController {
             .charactersIgnoringModifiers()
             .map(|c| c.to_string().to_ascii_lowercase());
         let combo = host::with(|h| h.translate_keys).unwrap_or_default();
-        if pressed == combo.modifiers
+        if !combo.modifiers.is_empty()
+            && pressed == combo.modifiers
             && typed.as_deref().and_then(|t| t.chars().next()) == Some(combo.key)
             && !host::with(|h| !h.engine.composition().is_empty()).unwrap_or(false)
         {

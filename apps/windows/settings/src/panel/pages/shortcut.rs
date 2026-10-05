@@ -2,38 +2,42 @@
 //! 翻译选中文字只改修饰键，字母键固定用配置里当前的；要换字母直接改 `config.toml`。
 
 use qingjian_platform::Modifiers;
-use windows_reactor::*;
+use windows_reactor::{
+    Callback, ChildrenControl, ComboBox, StackPanel, ToggleSwitch, View, ViewContext,
+};
 
 use crate::panel::controls::{field, index_of, page};
 use crate::panel::{Message, Settings};
 
 /// 翻页键对：界面名 + 配置写法。
-pub(crate) const PAGE_KEYS: [(&str, &str); 3] = [
+pub(crate) const PAGE_KEYS: [(&str, &str); 4] = [
     ("方括号 [ ]", "[]"),
     ("逗号句号 , .", ",."),
     ("减号等号 - =", "-="),
+    ("关闭", "none"),
 ];
 
-/// 可当模式键的字母（与 Core `ModeKeys::CANDIDATES` 一致）。
-pub(crate) const MODE_KEYS: [&str; 3] = ["v", "u", "i"];
+/// 可当模式键的字母（与 Core `ModeKeys::OPTIONS` 一致，none 表示关闭）。
+pub(crate) const MODE_KEYS: [&str; 4] = ["v", "u", "i", "none"];
 
 /// 修饰键预设：界面名 + 配置写法。
-pub(crate) const MODIFIERS: [(&str, &str); 6] = [
+pub(crate) const MODIFIERS: [(&str, &str); 7] = [
     ("Ctrl", "ctrl"),
     ("Alt", "alt"),
     ("Shift", "shift"),
     ("Ctrl + Shift", "shift+ctrl"),
     ("Ctrl + Alt", "ctrl+alt"),
     ("Alt + Shift", "shift+alt"),
+    ("关闭", "none"),
 ];
 
 fn mode_combo(current: char, callback: Callback<Option<usize>>) -> ComboBox {
     let selected = MODE_KEYS
         .iter()
-        .position(|key| key.starts_with(current))
+        .position(|key| key.starts_with(current) || (current == '\0' && *key == "none"))
         .unwrap_or(0);
     ComboBox::new()
-        .items_source(MODE_KEYS)
+        .items_source(["v", "u", "i", "关闭"])
         .selected_index(selected)
         .on_selection_changed(callback)
 }
@@ -108,5 +112,8 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
             ),
         ),
     ];
-    page("快捷键", StackPanel::new().spacing(16.0).children(rows))
+    page(
+        "快捷键（各项可选择关闭）",
+        StackPanel::new().spacing(16.0).children(rows),
+    )
 }

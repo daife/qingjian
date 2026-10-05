@@ -342,3 +342,5 @@ DLL 不读文件、不查 mtime。`SessionOpened` 只回过协议版本对得上
 Unix socket 用共享长度前缀与 Frame（当前公共版本 7，与 `PROTOCOL_VERSION` 同步，Fcitx5 插件里写死在 `qingjian.cpp` 的 OpenSession）；插件复用一条连接，每个上下文独立会话。Linux v3 扩展逐会话握手、确认 Sensitive/Password/Disable 后接受按下/释放、焦点和点击事实。
 候选回报绑定连接代次、上下文和服务端帧序号，仅当前聚焦页的有效释义进入 `note_displayed`，不把生成帧算作已展示。
 `[general] preedit` 使用已有 `both` / `inline` / `window`；没有新增 Linux 自绘配置。详见 [linux-fcitx5.md](linux-fcitx5.md)。
+
+快捷键的关闭值：`[shortcut] expression / question` 用 `"none"`，Core `ModeKeys` 内部以空字符表示禁用；修饰键与 `translate_selection` 用 `"none"`，内部为空修饰键，配置校验保留关闭值。`[general] page_keys = "none"` 返回两个空字符，禁用符号翻页。Windows 关闭翻译组合后，TSF 下次激活不登记保留键；macOS 录制组合键时无修饰键的 Delete 清除绑定。

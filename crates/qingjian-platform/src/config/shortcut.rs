@@ -48,12 +48,11 @@ impl Default for ShortcutConfig {
 }
 
 impl ShortcutConfig {
-    /// 删候选的修饰键；为空或与任一组译词键撞了就退回缺省。
+    /// 删候选的修饰键；空组合表示关闭，启用时与译词键撞了才退回缺省。
     pub fn delete_keys(&self) -> Modifiers {
         let (first, second) = self.translation_keys();
-        if self.delete_candidate.is_empty()
-            || self.delete_candidate == first
-            || self.delete_candidate == second
+        if !self.delete_candidate.is_empty()
+            && (self.delete_candidate == first || self.delete_candidate == second)
         {
             Self::default().delete_candidate
         } else {
@@ -61,12 +60,9 @@ impl ShortcutConfig {
         }
     }
 
-    /// 两组译词修饰键；两组相同或有一组为空时整个退回缺省，不做一半。
+    /// 两组译词修饰键；空组合表示关闭，两组启用且相同时退回缺省。
     pub fn translation_keys(&self) -> (Modifiers, Modifiers) {
-        if self.translation == self.translation_second
-            || self.translation.is_empty()
-            || self.translation_second.is_empty()
-        {
+        if !self.translation.is_empty() && self.translation == self.translation_second {
             let default = Self::default();
             (default.translation, default.translation_second)
         } else {
@@ -122,6 +118,44 @@ mod tests {
         let custom: ShortcutConfig =
             toml::from_str(&format!("delete_candidate = \"{}\"\n", free.key())).unwrap();
         assert_eq!(custom.delete_keys(), free);
+    }
+
+    #[test]
+    fn disabled_shortcuts_round_trip_without_restoring_defaults() {
+        let config: ShortcutConfig = toml::from_str(
+            r#"expression = "none"
+question = "none"
+translation = "none"
+translation_second = "none"
+delete_candidate = "none"
+translate_selection = "none"
+"#,
+        )
+        .unwrap();
+        assert!(config.mode.sanitized().is_valid());
+        assert!(!config.mode.sanitized().is_expression("v1+2", false));
+        assert!(!config.mode.sanitized().is_question("u4e00", false));
+        assert_eq!(
+            config.translation_keys(),
+            (Modifiers::default(), Modifiers::default())
+        );
+        assert!(config.delete_keys().is_empty());
+        assert!(config.translate_selection.modifiers.is_empty());
+        let saved = toml::to_string(&config).unwrap();
+        assert_eq!(toml::from_str::<ShortcutConfig>(&saved).unwrap(), config);
+    }
+
+    #[test]
+    fn disabling_one_translation_preserves_the_other_binding() {
+        let config: ShortcutConfig =
+            toml::from_str("translation = \"none\"\ntranslation_second = \"control+option\"\n")
+                .unwrap();
+        assert!(config.translation_keys().0.is_empty());
+        assert_eq!(
+            config.translation_keys().1,
+            "control+option".parse().unwrap()
+        );
+        assert_eq!(config.delete_keys(), Modifiers::SHIFT);
     }
 
     #[test]

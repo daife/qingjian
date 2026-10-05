@@ -10,7 +10,7 @@ pub const MAX_PAGE_SIZE: usize = 9;
 /// 翻页键对的可选值，第一项是缺省：第一个键向前、第二个向后。
 /// 缺省不用 `,` `.`：组句中敲逗号句号应该把首选上屏再补一个全角标点（`nihao,zaima` 一气打完），
 /// 拿它们翻页就得先按空格再敲标点。选 `-` `=` 时组句中的 `-` 是翻页，不再进英文直输段（#43）。
-pub const PAGE_KEY_OPTIONS: [&str; 3] = ["[]", ",.", "-="];
+pub const PAGE_KEY_OPTIONS: [&str; 4] = ["[]", ",.", "-=", "none"];
 
 /// 缺省翻页键对，与 [`PAGE_KEY_OPTIONS`] 第一项一致。
 pub const DEFAULT_PAGE_KEYS: (char, char) = ('[', ']');
@@ -247,8 +247,11 @@ impl GeneralConfig {
         self.page_size.clamp(1, MAX_PAGE_SIZE)
     }
 
-    /// 翻页键对；写得不对（不是两个不同的 ASCII 可见字符）时退回缺省。
+    /// 翻页键对；none 禁用符号翻页，其余非法配置退回缺省。
     pub fn page_keys(&self) -> (char, char) {
+        if self.page_keys == "none" {
+            return ('\0', '\0');
+        }
         let mut chars = self.page_keys.chars();
         match (chars.next(), chars.next(), chars.next()) {
             (Some(previous), Some(next), None)
@@ -268,6 +271,20 @@ impl GeneralConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn disabling_page_symbols_survives_config_round_trip() {
+        let config = GeneralConfig {
+            page_keys: "none".to_owned(),
+            ..Default::default()
+        };
+        assert_eq!(config.page_keys(), ('\0', '\0'));
+        let saved = toml::to_string(&config).unwrap();
+        assert_eq!(
+            toml::from_str::<GeneralConfig>(&saved).unwrap().page_keys(),
+            ('\0', '\0')
+        );
+    }
 
     #[test]
     fn horizontal_grid_is_off_unless_switched_on() {

@@ -35,6 +35,9 @@ pub(super) fn language_label(language: Language) -> &'static str {
 
 /// `,.` → `,  .`。
 pub(super) fn page_keys_label(pair: &str) -> String {
+    if pair == "none" {
+        return "关闭".to_owned();
+    }
     let mut chars = pair.chars();
     match (chars.next(), chars.next()) {
         (Some(previous), Some(next)) => format!("{previous}   {next}"),

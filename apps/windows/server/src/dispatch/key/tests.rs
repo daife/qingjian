@@ -148,3 +148,24 @@ fn tab_with_raw_input_and_no_candidates_is_consumed_without_commit() {
     assert_eq!(result.1, None);
     assert_eq!(result.2.page, 0);
 }
+
+#[test]
+fn disabled_digit_shortcuts_release_chords_and_keep_normal_selection() {
+    let mut router = router(5);
+    router.config.translation_keys = (KeyModifiers::default(), KeyModifiers::default());
+    router.config.delete_keys = KeyModifiers::default();
+    let normal = KeyModifiers::default();
+    compose(&mut router, "qq", normal);
+    let ctrl = KeyModifiers {
+        ctrl: true,
+        ..normal
+    };
+    let result = key(&mut router, b'1' as u32, Some('1'), ctrl);
+    assert_eq!(result.0, KeyOutcome::Passthrough);
+    assert_eq!(result.1, None);
+    assert_eq!(router.engine.composition().text(), "qq");
+    assert_eq!(
+        key(&mut router, b'1' as u32, Some('1'), normal).1,
+        Some("第1项".to_owned())
+    );
+}

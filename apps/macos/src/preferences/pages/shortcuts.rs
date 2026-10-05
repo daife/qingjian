@@ -60,7 +60,16 @@ impl ShortcutsPage {
             mtm,
             "选「，  。」时组句中敲逗号句号是翻页，不再是上屏加标点。",
         );
-        let key_titles: Vec<String> = ModeKeys::CANDIDATES.iter().map(char::to_string).collect();
+        let key_titles: Vec<String> = ModeKeys::OPTIONS
+            .iter()
+            .map(|key| {
+                if *key == '\0' {
+                    "关闭".to_owned()
+                } else {
+                    key.to_string()
+                }
+            })
+            .collect();
         let expression = row_popup(
             layout,
             mtm,
@@ -148,7 +157,7 @@ impl ShortcutsPage {
         note_full(
             layout,
             mtm,
-            "改快捷键：点一下右边的按钮，再按下新的组合键（要带修饰键 ⌃ ⌥ ⇧ ⌘），Esc 取消。避开 ⌃+数字（切换桌面）和 ⌘+数字 / ⌘T（应用常用键）。",
+            "改快捷键：点一下右边的按钮，再按下新的组合键（要带修饰键 ⌃ ⌥ ⇧ ⌘），Esc 取消，按 Delete 关闭这项快捷键。模式键与翻页键可选「关闭」。避开 ⌃+数字（切换桌面）和 ⌘+数字 / ⌘T（应用常用键）。",
         );
         let reset = button(mtm, "恢复默认快捷键", Setting::ResetShortcuts, target);
         layout.place(&reset, PAGE_PADDING, 160.0, ROW_HEIGHT + 4.0);
@@ -175,7 +184,11 @@ impl ShortcutsPage {
 
     pub fn sync(&self, config: &Config) {
         let (previous, next) = config.general.page_keys();
-        let pair = format!("{previous}{next}");
+        let pair = if previous == '\0' {
+            "none".to_owned()
+        } else {
+            format!("{previous}{next}")
+        };
         select(
             &self.page_keys,
             PAGE_KEY_OPTIONS.iter().position(|k| *k == pair),
@@ -183,15 +196,11 @@ impl ShortcutsPage {
         let keys = config.shortcut.mode.sanitized();
         select(
             &self.expression,
-            ModeKeys::CANDIDATES
-                .iter()
-                .position(|k| *k == keys.expression),
+            ModeKeys::OPTIONS.iter().position(|k| *k == keys.expression),
         );
         select(
             &self.question,
-            ModeKeys::CANDIDATES
-                .iter()
-                .position(|k| *k == keys.question),
+            ModeKeys::OPTIONS.iter().position(|k| *k == keys.question),
         );
         set_checked(&self.question_mark, keys.question_mark);
         let (first, second) = config.shortcut.translation_keys();

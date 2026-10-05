@@ -141,3 +141,13 @@ Linux 当前提供本地候选，尚无云端整句补全。裸问号的既有�
 
 Linux 缺省 `Alt + 数字` / `Alt + Shift + 数字` 上屏第一 / 第二条译词，`Shift + 数字` 删除候选，
 可在配置文件 `[shortcut]` 修改。安装与配置位置见 [Linux](linux.md)。
+
+## 单独关闭快捷键
+
+不使用的快捷键可以单独关闭，避免与应用的快捷键冲突。Windows 在「设置 → 快捷键」对应下拉框选择「关闭」；macOS 的模式键与翻页键选择「关闭」，译词、删除候选和翻译选中文字则点击录制按钮后按 Delete。重新选择或录制组合键即可启用。
+
+关闭其中一组译词键不会影响另一组。翻页符号键关闭后，仍可用 PageUp / PageDown 或 Tab 翻页；空格、数字选词等固定输入键保持原有行为。问字字母入口和 `?` 入口分别开关。
+
+Windows 修改或关闭「翻译选中文字」后，需要切换到其他输入法再切回青简，以释放原来的组合键。
+
+Linux 或直接编辑配置文件时，在 `[shortcut]` 下把 `expression`、`question`、`translation`、`translation_second`、`delete_candidate` 或 `translate_selection` 分别设为 `"none"` 即可关闭；翻页符号键用 `[general] page_keys = "none"`，问号入口用 `[shortcut] question_mark = false`。

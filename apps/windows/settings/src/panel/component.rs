@@ -4,7 +4,12 @@ use qingjian_platform::{
     CandidateRenderer, Config, DEFAULT_ENGLISH_CANDIDATES_OFF_WINDOWS, LayoutMode, LogLevel,
     PreeditMode, ShiftLetter, ThemeMode, UpdateChannel,
 };
-use windows_reactor::*;
+use windows_reactor::{
+    Component, ComponentContext, ElementRef, KeyedView, NavigationView,
+    NavigationViewBackButtonVisible, NavigationViewItem, NavigationViewItemSlot,
+    NavigationViewPaneDisplayMode, NavigationViewSlot, SlotView, SlotsControl, Symbol, SymbolIcon,
+    View, ViewContext,
+};
 
 use super::cloud_status::CloudStatus;
 use super::controls::{export_logs, log_dir, open_in_editor, open_with_explorer};
@@ -181,7 +186,12 @@ impl Component for Settings {
             }
             Message::TranslateSelection(Some(i)) if i < shortcut::MODIFIERS.len() => {
                 let key = self.config.shortcut.translate_selection.key;
-                let combo = format!("{}+{key}", shortcut::MODIFIERS[i].1);
+                let modifier = shortcut::MODIFIERS[i].1;
+                let combo = if modifier == "none" {
+                    "none".to_owned()
+                } else {
+                    format!("{modifier}+{key}")
+                };
                 self.save("shortcut", "translate_selection", combo);
             }
 

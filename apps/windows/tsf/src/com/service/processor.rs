@@ -25,12 +25,14 @@ impl ITfTextInputProcessor_Impl for TextService_Impl {
         let sink: ITfKeyEventSink = self.to_interface();
         unsafe { keystroke.AdviseKeyEventSink(tid, &sink, true)? };
         let combo = preserved::load_combo();
-        match preserved::register(&keystroke, tid, combo) {
-            Ok(()) => {
-                self.translate_combo.set(Some(combo));
-                log(&format!("翻译选中文字快捷键已登记为保留键: {combo}"));
+        if !combo.modifiers.is_empty() {
+            match preserved::register(&keystroke, tid, combo) {
+                Ok(()) => {
+                    self.translate_combo.set(Some(combo));
+                    log(&format!("翻译选中文字快捷键已登记为保留键: {combo}"));
+                }
+                Err(error) => log(&format!("登记翻译快捷键失败: {error}")),
             }
-            Err(error) => log(&format!("登记翻译快捷键失败: {error}")),
         }
 
         self.client_id.set(tid);

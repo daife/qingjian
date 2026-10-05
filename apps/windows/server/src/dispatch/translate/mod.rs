@@ -17,7 +17,8 @@ impl Router {
     /// 修饰键比物理组合（去掉 Caps / 中英模式两个状态位）。
     pub(super) fn matches_translate_combo(&self, event: &KeyEvent) -> bool {
         let combo = self.config.translate_selection;
-        event.character == Some(combo.key)
+        !combo.modifiers.is_empty()
+            && event.character == Some(combo.key)
             && event.modifiers.chord() == KeyModifiers::from(combo.modifiers)
     }
 

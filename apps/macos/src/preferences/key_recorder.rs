@@ -72,10 +72,12 @@ define_class!(
                 command: flags.contains(NSEventModifierFlags::Command),
             };
             // 没按修饰键的单键不算快捷键，继续等
-            if modifiers.is_empty() {
+            if modifiers.is_empty() && !matches!(event.keyCode(), 51 | 117) {
                 return;
             }
-            let value = if self.ivars().modifiers_only {
+            let value = if modifiers.is_empty() && matches!(event.keyCode(), 51 | 117) {
+                Some(("none".to_owned(), "已关闭".to_owned()))
+            } else if self.ivars().modifiers_only {
                 Some((modifiers.key(), modifiers.label()))
             } else {
                 event

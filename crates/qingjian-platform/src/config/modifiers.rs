@@ -64,6 +64,9 @@ impl Modifiers {
 
     /// 配置文件里的写法，固定顺序 control+shift+option+command。
     pub fn key(&self) -> String {
+        if self.is_empty() {
+            return "none".to_owned();
+        }
         let mut parts = Vec::new();
         if self.control {
             parts.push("control");
@@ -82,6 +85,9 @@ impl Modifiers {
 
     /// 给人看的符号，按 macOS 的习惯顺序 ⌃⇧⌥⌘。
     pub fn label(&self) -> String {
+        if self.is_empty() {
+            return "已关闭".to_owned();
+        }
         let mut out = String::new();
         if self.control {
             out.push('⌃');
@@ -103,6 +109,9 @@ impl FromStr for Modifiers {
     type Err = String;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.trim().eq_ignore_ascii_case("none") {
+            return Ok(Self::default());
+        }
         let mut out = Self::default();
         for token in text.split(['+', ' ']).filter(|t| !t.is_empty()) {
             match token.to_ascii_lowercase().as_str() {

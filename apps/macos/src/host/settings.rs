@@ -217,7 +217,7 @@ impl Host {
                 self.settings.set_bool("shortcut", "question_mark", on);
             }
             (Setting::ExpressionKey | Setting::QuestionKey, SettingValue::Index(index)) => {
-                if let Some(&key) = ModeKeys::CANDIDATES.get(index) {
+                if let Some(&key) = ModeKeys::OPTIONS.get(index) {
                     let mut keys = config.shortcut.mode.sanitized();
                     let name = if setting == Setting::ExpressionKey {
                         keys.expression = key;
@@ -227,7 +227,15 @@ impl Host {
                         "question"
                     };
                     if keys.is_valid() {
-                        self.settings.set_value("shortcut", name, key.to_string());
+                        self.settings.set_value(
+                            "shortcut",
+                            name,
+                            if key == '\0' {
+                                "none".to_owned()
+                            } else {
+                                key.to_string()
+                            },
+                        );
                     } else {
                         tracing::warn!("表达式键与问字键不能相同，未改");
                     }
@@ -244,7 +252,7 @@ impl Host {
                     } else {
                         ("translation_second", first)
                     };
-                    if chosen == other {
+                    if !chosen.is_empty() && chosen == other {
                         tracing::warn!("两组译词快捷键不能相同，未改");
                     } else {
                         self.settings.set_value("shortcut", name, chosen.key());
@@ -256,7 +264,7 @@ impl Host {
                 match text.parse::<Modifiers>() {
                     Ok(chosen) => {
                         let (first, second) = config.shortcut.translation_keys();
-                        if chosen == first || chosen == second {
+                        if !chosen.is_empty() && (chosen == first || chosen == second) {
                             tracing::warn!("删候选的快捷键不能与译词快捷键相同，未改");
                         } else {
                             self.settings

@@ -29,11 +29,17 @@ impl KeyCombo {
 
     /// 配置文件里的写法。
     pub fn key_string(&self) -> String {
+        if self.modifiers.is_empty() {
+            return "none".to_owned();
+        }
         format!("{}+{}", self.modifiers.key(), self.key)
     }
 
     /// 给人看的写法：`⌃⌥T`。
     pub fn label(&self) -> String {
+        if self.modifiers.is_empty() {
+            return "已关闭".to_owned();
+        }
         format!(
             "{}{}",
             self.modifiers.label(),
@@ -52,6 +58,12 @@ impl FromStr for KeyCombo {
     type Err = String;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.trim().eq_ignore_ascii_case("none") {
+            return Ok(Self {
+                modifiers: Modifiers::default(),
+                ..Self::default()
+            });
+        }
         let (modifiers, key) = text
             .trim()
             .rsplit_once('+')
@@ -63,8 +75,12 @@ impl FromStr for KeyCombo {
         if !key.is_ascii_alphanumeric() {
             return Err(format!("key must be a letter or digit: {key:?}"));
         }
+        let modifiers: Modifiers = modifiers.parse()?;
+        if modifiers.is_empty() {
+            return Err("no modifier given".to_owned());
+        }
         Ok(Self {
-            modifiers: modifiers.parse()?,
+            modifiers,
             key: key.to_ascii_lowercase(),
         })
     }

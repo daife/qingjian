@@ -15,9 +15,17 @@ pub const QUESTION_PREFIX: char = '?';
 #[serde(default)]
 pub struct ModeKeys {
     /// 表达式模式前缀：`v1+2`、`v123`。
+    #[serde(
+        serialize_with = "serialize_prefix",
+        deserialize_with = "deserialize_prefix"
+    )]
     pub expression: char,
 
     /// 问字模式前缀：`usangemu`（三个木）、`u4e00`（码点）。
+    #[serde(
+        serialize_with = "serialize_prefix",
+        deserialize_with = "deserialize_prefix"
+    )]
     pub question: char,
 
     /// `?` 开头是否也进问字模式。缺省关：没在组句时敲的问号就是问号；
@@ -39,6 +47,9 @@ impl ModeKeys {
     /// 能当模式键的字母：不是任何拼音音节的开头。
     pub const CANDIDATES: [char; 3] = ['v', 'u', 'i'];
 
+    /// 设置菜单中的入口键；空字符表示关闭。
+    pub const OPTIONS: [char; 4] = ['v', 'u', 'i', '\0'];
+
     /// 双拼下 v / u / i 都是音节键，模式键换成对应的大写字母（Shift+V / Shift+U，搜狗 / 微软的做法）。
     pub fn shifted(self) -> Self {
         Self {
@@ -57,11 +68,11 @@ impl ModeKeys {
         }
     }
 
-    /// 两个键都合法且互不相同。不合法的配置整个退回缺省，不做一半。
+    /// 启用的入口键合法且互不相同，空字符表示关闭；非法配置整个退回缺省。
     pub fn is_valid(&self) -> bool {
-        self.expression != self.question
-            && Self::CANDIDATES.contains(&self.expression)
-            && Self::CANDIDATES.contains(&self.question)
+        (self.expression == '\0' || self.expression != self.question)
+            && Self::OPTIONS.contains(&self.expression)
+            && Self::OPTIONS.contains(&self.question)
     }
 
     /// 非法配置退回缺省（`?` 开关照旧保留）。
@@ -104,9 +115,43 @@ impl ModeKeys {
     }
 }
 
+fn serialize_prefix<S: serde::Serializer>(key: &char, serializer: S) -> Result<S::Ok, S::Error> {
+    if *key == '\0' {
+        serializer.serialize_str("none")
+    } else {
+        serializer.serialize_char(*key)
+    }
+}
+
+fn deserialize_prefix<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<char, D::Error> {
+    let text = String::deserialize(deserializer)?;
+    if text == "none" {
+        return Ok('\0');
+    }
+    let mut chars = text.chars();
+    match (chars.next(), chars.next()) {
+        (Some(key), None) => Ok(key),
+        _ => Err(serde::de::Error::custom("expected one character or none")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn disabled_prefixes_survive_sanitizing_and_shifting() {
+        let keys: ModeKeys = toml::from_str("expression = \"none\"\n").unwrap();
+        assert!(keys.is_valid());
+        assert!(!keys.sanitized().is_expression("v1+2", false));
+        assert!(!keys.sanitized().shifted().is_expression("V1+2", false));
+        assert!(keys.is_question("u4e00", false));
+        let other: ModeKeys =
+            toml::from_str("question = \"none\"\nquestion_mark = true\n").unwrap();
+        assert!(other.sanitized().is_expression("v1+2", false));
+        assert!(!other.sanitized().is_question("u4e00", false));
+        assert!(other.sanitized().is_question("?hello", false));
+    }
 
     #[test]
     fn defaults_are_v_and_u_and_question_mark_is_off() {
