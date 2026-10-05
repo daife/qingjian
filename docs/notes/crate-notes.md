@@ -344,3 +344,5 @@ Unix socket 用共享长度前缀与 Frame（当前公共版本 7，与 `PROTOCO
 `[general] preedit` 使用已有 `both` / `inline` / `window`；没有新增 Linux 自绘配置。详见 [linux-fcitx5.md](linux-fcitx5.md)。
 
 快捷键的关闭值：`[shortcut] expression / question` 用 `"none"`，Core `ModeKeys` 内部以空字符表示禁用；修饰键与 `translate_selection` 用 `"none"`，内部为空修饰键，配置校验保留关闭值。`[general] page_keys = "none"` 返回两个空字符，禁用符号翻页。Windows 关闭翻译组合后，TSF 下次激活不登记保留键；macOS 录制组合键时无修饰键的 Delete 清除绑定。
+
+Windows 固定空格 / 回车触发方式：`[shortcut] enter_on_release` / `space_on_release` 缺省 false（按下触发），true 时只在短按松开触发；`short_press_ms` 缺省 500，使用范围 100–2000 毫秒。设置页仅切触发方式与阈值，不改绑定。Server 通过 `InputSettings` 随 `OpenSession` / `ModeSync` 下发；TSF `com/key/release` 保存按下时的事件、上下文与单调时钟，吞掉自动重复，`OnTestKeyUp` 只查询，`OnKeyUp` 才取走并转发。超时、中途其他键、失焦、切模式或热加载取消短按，组句之外不延迟应用的空格 / 回车。未来长按功能启用时，应在下发按键设置处强制对应的 `*_on_release` 为 true，沿用同一阈值；本次尚未新增长按动作或开关。

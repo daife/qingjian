@@ -158,6 +158,10 @@ macro_rules! template_shortcut_keys {
         r#"# 中 / 英模式切换键（Windows 用），可多选：shift 单击（缺省）/ control 单击 / ctrl+alt+space 组合键；[] 不用键切换。
 # macOS 的切换键是 Caps Lock（系统级），本项不生效
 switch_mode = ["shift"]
+# Windows 固定回车 / 空格：false 按下触发，true 短按松开触发；超过阈值不触发
+enter_on_release = false
+space_on_release = false
+short_press_ms = 500
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（option / shift / control / command 用 + 连），偏好设置里点按钮录制；别用 control+数字（系统切桌面）和 command+数字（应用切标签页）
 translation = "option"
@@ -178,6 +182,10 @@ macro_rules! template_shortcut_keys {
         r#"# 中 / 英模式切换键，可多选：shift 单击（缺省，与微软拼音一致）/ control 单击 / ctrl+alt+space 组合键；[] 不用键切换，只剩按钮。
 # 不提供 Ctrl + Space：中文 Windows 把它绑成系统的「输入法/非输入法切换」，系统先截走
 switch_mode = ["shift"]
+# Windows 固定回车 / 空格：false 按下触发，true 短按松开触发；超过阈值不触发
+enter_on_release = false
+space_on_release = false
+short_press_ms = 500
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（alt / shift / ctrl / win 用 + 连）。Alt+数字会被 Windows 当菜单快捷键截走，缺省用 Ctrl；组句时才拦，不打字时照常放行给应用
 translation = "ctrl"

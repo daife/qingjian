@@ -4,6 +4,8 @@
 pub(crate) mod event;
 mod layout;
 pub(crate) mod preserved;
+mod release;
 mod tap;
+pub(crate) use release::ReleaseKeys;
 
 pub(crate) use self::tap::KeyTap;

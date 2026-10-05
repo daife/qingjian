@@ -62,6 +62,7 @@ impl TextService_Impl {
 
     /// 转发失败后断开，下一键重连。
     pub(super) fn disconnect(&self) {
+        self.release_keys.cancel();
         *self.engine.borrow_mut() = None;
         self.last_connect_failure.set(None);
         self.shared.end_composing();

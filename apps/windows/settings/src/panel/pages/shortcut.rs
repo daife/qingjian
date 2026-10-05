@@ -3,7 +3,7 @@
 
 use qingjian_platform::Modifiers;
 use windows_reactor::{
-    Callback, ChildrenControl, ComboBox, StackPanel, ToggleSwitch, View, ViewContext,
+    Callback, ChildrenControl, ComboBox, NumberBox, StackPanel, ToggleSwitch, View, ViewContext,
 };
 
 use crate::panel::controls::{field, index_of, page};
@@ -57,6 +57,29 @@ fn modifier_combo(current: Modifiers, callback: Callback<Option<usize>>) -> Comb
 pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> View {
     let s = &settings.config.shortcut;
     let rows = [
+        field(
+            "原样上屏（Enter）：短按松开时触发",
+            "按键固定为回车。关闭时按下触发；开启时短按松开触发，超过下方阈值不触发。注音模式仍为选词，原样上屏用 Shift + Enter。",
+            ToggleSwitch::new()
+                .is_on(s.enter_on_release)
+                .on_toggled(context.callback(Message::EnterOnRelease)),
+        ),
+        field(
+            "空格原功能（Space）：短按松开时触发",
+            "按键固定为空格，保留选词等现有功能。关闭时按下触发；开启时短按松开触发，超过下方阈值不触发。",
+            ToggleSwitch::new()
+                .is_on(s.space_on_release)
+                .on_toggled(context.callback(Message::SpaceOnRelease)),
+        ),
+        field(
+            "短按时间阈值（毫秒）",
+            "回车与空格共用，范围 100–2000 毫秒，默认 500。仅影响开启松开触发的按键。",
+            NumberBox::new()
+                .minimum(100.0)
+                .maximum(2000.0)
+                .value(s.short_press_ms.clamp(100, 2000) as f64)
+                .on_value_changed(context.callback(Message::ShortPressMs)),
+        ),
         field(
             "翻页键",
             "选「, .」或「- =」时组句中敲对应符号是翻页，不再是上屏加标点。",
@@ -112,8 +135,5 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
             ),
         ),
     ];
-    page(
-        "快捷键（各项可选择关闭）",
-        StackPanel::new().spacing(16.0).children(rows),
-    )
+    page("快捷键", StackPanel::new().spacing(16.0).children(rows))
 }

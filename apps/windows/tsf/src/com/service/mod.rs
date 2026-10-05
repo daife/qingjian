@@ -27,7 +27,7 @@ use qingjian_platform::KeyCombo;
 use qingjian_platform::protocol::{IndicatorState, InputSettings};
 
 use super::composition::Shared;
-use super::key::KeyTap;
+use super::key::{KeyTap, ReleaseKeys};
 use super::mode::ModeState;
 use super::mode::sink::Advice;
 use super::poll::PollTimer;
@@ -75,6 +75,9 @@ pub struct TextService {
 
     /// 单击中英切换键切中英的判定。
     key_tap: KeyTap,
+
+    /// 固定回车 / 空格松开触发的按住状态。
+    release_keys: ReleaseKeys,
 
     /// 语言 profile 通知挂上后的 cookie；挂一次就够（见 [`super::profile`]）。
     profile_cookie: Cell<Option<u32>>,
@@ -172,6 +175,7 @@ impl TextService {
             mode_sinks: RefCell::new(Vec::new()),
             focus_sink: RefCell::new(None),
             key_tap: KeyTap::default(),
+            release_keys: ReleaseKeys::default(),
             profile_cookie: Cell::new(None),
             translate_combo: Cell::new(None),
             switch_preserved: Cell::new(false),

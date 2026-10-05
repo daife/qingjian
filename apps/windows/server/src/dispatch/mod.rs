@@ -157,6 +157,9 @@ impl Router {
     /// 所以 DLL 不用自己读配置文件，配置改了也不用重开会话。
     pub(super) fn input_settings(&self) -> InputSettings {
         InputSettings {
+            enter_on_release: self.config.enter_on_release,
+            space_on_release: self.config.space_on_release,
+            short_press_ms: self.config.short_press_ms,
             switch_mode: self.config.switch_mode,
             english_mode: self.config.english_mode,
             shift_letter_compose: self.config.shift_letter_compose,

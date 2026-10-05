@@ -33,6 +33,9 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
     fn OnTestKeyDown(&self, pic: Ref<ITfContext>, wparam: WPARAM, lparam: LPARAM) -> Result<BOOL> {
         let vk = wparam.0 as u32;
         self.note_key_down(vk, lparam);
+        if self.release_keys.held(vk) {
+            return Ok(true.into());
+        }
         if self.keyboard_disabled(&pic) {
             return Ok(FALSE);
         }
@@ -42,21 +45,48 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
     fn OnKeyDown(&self, pic: Ref<ITfContext>, wparam: WPARAM, lparam: LPARAM) -> Result<BOOL> {
         let vk = wparam.0 as u32;
         self.note_key_down(vk, lparam);
+        if self.release_keys.held(vk) {
+            return Ok(true.into());
+        }
         if self.keyboard_disabled(&pic) {
             return Ok(FALSE);
         }
         let event = self.key_event(vk);
+        if self.release_trigger(&event)
+            && self.would_eat(&event)
+            && let Ok(context) = pic.ok()
+        {
+            self.release_keys
+                .begin(event, context.clone(), lparam.0 & (1 << 30) != 0);
+            return Ok(true.into());
+        }
         Ok(self.handle_key(pic, event).into())
     }
 
     fn OnTestKeyUp(&self, _pic: Ref<ITfContext>, wparam: WPARAM, _lparam: LPARAM) -> Result<BOOL> {
-        self.note_key_up(wparam.0 as u32);
-        Ok(FALSE)
+        let vk = wparam.0 as u32;
+        self.note_key_up(vk);
+        Ok(self.release_keys.held(vk).into())
     }
 
-    fn OnKeyUp(&self, _pic: Ref<ITfContext>, wparam: WPARAM, _lparam: LPARAM) -> Result<BOOL> {
-        self.note_key_up(wparam.0 as u32);
-        Ok(FALSE)
+    fn OnKeyUp(&self, pic: Ref<ITfContext>, wparam: WPARAM, _lparam: LPARAM) -> Result<BOOL> {
+        let vk = wparam.0 as u32;
+        self.note_key_up(vk);
+        if !self.release_keys.held(vk) {
+            return Ok(FALSE);
+        }
+        let threshold = self.input_settings.get().unwrap_or_default().short_press_ms;
+        if let Ok(context) = pic.ok() {
+            if let Some(event) = self.release_keys.finish(vk, context, threshold)
+                && (self.shared.composing() || self.shared.translating())
+                && !self.keyboard_disabled(&pic)
+            {
+                self.handle_key(pic, event);
+            }
+        } else {
+            self.release_keys.discard(vk);
+        }
+        Ok(true.into())
     }
 
     /// 保留键命中：Ctrl+Space 直接切中英（切换键在 DLL 侧，不进 Server）；
@@ -99,11 +129,24 @@ impl TextService_Impl {
         disabled
     }
 
+    /// 只延迟输入法已有的功能；组句之外的换行 / 空格仍由应用按正常方式处理。
+    fn release_trigger(&self, event: &KeyEvent) -> bool {
+        let input = self.input_settings.get().unwrap_or_default();
+        !event.modifiers.has_command_key()
+            && (self.shared.composing() || self.shared.translating())
+            && match event.virtual_key {
+                0x0d => input.enter_on_release,
+                0x20 => input.space_on_release,
+                _ => false,
+            }
+    }
+
     fn key_event(&self, vk: u32) -> KeyEvent {
         to_key_event(vk, self.mode_state.english())
     }
 
     fn note_key_down(&self, vk: u32, lparam: LPARAM) {
+        self.release_keys.note_down(vk);
         self.key_tap
             .key_down(vk, lparam, self.mode_state.switch_keys());
     }

@@ -16,6 +16,15 @@ pub struct ShortcutConfig {
     /// 中 / 英切换键（Windows 用），可多选：`["shift", "control", "ctrl+alt+space"]`。详见 [`SwitchKeys`]。
     pub switch_mode: SwitchKeys,
 
+    /// Windows：回车短按松开时才执行原功能，固定键不可重绑。
+    pub enter_on_release: bool,
+
+    /// Windows：空格短按松开时才执行原功能，固定键不可重绑。
+    pub space_on_release: bool,
+
+    /// 短按的最长按住时间（毫秒），超过时松开不触发。
+    pub short_press_ms: u64,
+
     /// 数字键配这些修饰键：上屏候选的第一个译词。
     pub translation: Modifiers,
 
@@ -37,6 +46,9 @@ impl Default for ShortcutConfig {
         #[cfg(not(windows))]
         let (translation, translation_second) = (Modifiers::OPTION, Modifiers::SHIFT_OPTION);
         Self {
+            enter_on_release: false,
+            space_on_release: false,
+            short_press_ms: 500,
             mode: ModeKeys::default(),
             switch_mode: SwitchKeys::default(),
             translation,
@@ -74,6 +86,23 @@ impl ShortcutConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fixed_commit_keys_default_to_press_and_round_trip_release_settings() {
+        let old: ShortcutConfig = toml::from_str("").unwrap();
+        assert!(!old.enter_on_release && !old.space_on_release);
+        assert_eq!(old.short_press_ms, 500);
+        let config: ShortcutConfig = toml::from_str(
+            "enter_on_release = true\nspace_on_release = true\nshort_press_ms = 750\n",
+        )
+        .unwrap();
+        assert!(config.enter_on_release && config.space_on_release);
+        assert_eq!(config.short_press_ms, 750);
+        assert_eq!(
+            toml::from_str::<ShortcutConfig>(&toml::to_string(&config).unwrap()).unwrap(),
+            config
+        );
+    }
 
     #[test]
     fn old_files_without_modifier_keys_still_parse_and_get_defaults() {

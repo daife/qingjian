@@ -60,6 +60,7 @@ impl TextService_Impl {
         if self.input_settings.get() == Some(input) {
             return;
         }
+        self.release_keys.cancel();
         self.input_settings.set(Some(input));
         log(&format!(
             "按键行为设置：中英切换键 {}，内置英文模式 {}，Shift 字母进组句 {}",
@@ -185,6 +186,9 @@ impl TextService_Impl {
     pub(super) fn set_thread_focus(&self, foreground: bool) {
         if self.shared.foreground() == foreground {
             return;
+        }
+        if !foreground {
+            self.release_keys.cancel();
         }
         self.shared.set_foreground(foreground);
         if foreground {

@@ -174,6 +174,15 @@ impl Component for Settings {
             Message::ModeQuestion(Some(i)) if i < shortcut::MODE_KEYS.len() => {
                 self.save("shortcut", "question", shortcut::MODE_KEYS[i]);
             }
+            Message::EnterOnRelease(on) => self.save("shortcut", "enter_on_release", on),
+            Message::SpaceOnRelease(on) => self.save("shortcut", "space_on_release", on),
+            Message::ShortPressMs(Some(value)) if value.is_finite() => {
+                self.save(
+                    "shortcut",
+                    "short_press_ms",
+                    value.round().clamp(100.0, 2000.0) as i64,
+                );
+            }
             Message::QuestionMark(on) => self.save("shortcut", "question_mark", on),
             Message::Translation(Some(i)) if i < shortcut::MODIFIERS.len() => {
                 self.save("shortcut", "translation", shortcut::MODIFIERS[i].1);
