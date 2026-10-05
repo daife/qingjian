@@ -14,6 +14,7 @@ mod privacy;
 mod raw;
 mod selection_translation;
 mod shuangpin;
+mod translation_commit;
 mod zhuyin;
 
 use std::collections::HashMap;

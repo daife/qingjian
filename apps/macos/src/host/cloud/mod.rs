@@ -6,7 +6,9 @@ mod test_monitor;
 pub(super) use predict_monitor::PredictMonitor;
 pub(super) use test_monitor::CloudTestMonitor;
 
-use super::*;
+use super::Host;
+use qingjian_core::{Candidate, CandidateKind, CloudWord, Prediction};
+use qingjian_predict::{ConnectionTest, PredictError};
 
 impl Host {
     /// 清空输入日志文件；开着的话重新打开继续记。
@@ -162,6 +164,10 @@ pub(super) fn describe_predict_error(error: &PredictError) -> String {
         PredictError::Encode(error) => format!("请求编码失败：{error}"),
         PredictError::Runtime(error) => format!("起不了后台线程：{error}"),
         PredictError::Api(error) => format!("请求失败：{error}"),
+        PredictError::Http(error) => format!("有道请求失败：{error}"),
+        PredictError::YoudaoBusiness(code) => format!("有道返回错误：{code}"),
+        PredictError::YoudaoResponse => "有道未返回有效译文".to_owned(),
+        PredictError::YoudaoInput => "有道需要 1000 字以内的非空文本和受支持的目标语言".to_owned(),
     }
 }
 

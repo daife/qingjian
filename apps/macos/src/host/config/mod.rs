@@ -55,6 +55,12 @@ impl Host {
         self.window.set_font(&config.general.font);
         self.window.set_renderer(config.general.renderer);
         self.apply_learning_language(&config.general);
+        if force || config.predict != self.applied_predict {
+            self.engine
+                .set_selection_translation_enabled(config.predict.translation.enabled);
+            self.engine
+                .set_translation_commit_fallback(config.predict.translation_commit_fallback);
+        }
         if self.input_log_enabled != Some(config.general.input_log) {
             self.input_log_enabled = Some(config.general.input_log);
             self.open_input_log(config.general.input_log);

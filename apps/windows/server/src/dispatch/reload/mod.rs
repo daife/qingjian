@@ -32,6 +32,8 @@ fn mtime(path: &Path) -> Option<SystemTime> {
 
 /// 按 `[predict]` 接云联想与释义兜底；关着或缺密钥就退回本地实现。启动与热加载共用。
 pub fn attach_cloud(engine: &mut Engine, predict: &PredictConfig) {
+    engine.set_selection_translation_enabled(predict.translation.enabled);
+    engine.set_translation_commit_fallback(predict.translation_commit_fallback);
     if !predict.enabled {
         tracing::info!("云联想未开启（[predict] enabled = false）");
         engine.set_predictor(Box::new(NoPredictor));

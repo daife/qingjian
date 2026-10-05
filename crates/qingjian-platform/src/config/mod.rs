@@ -358,6 +358,8 @@ english_sentence = true
 # 常用场景参考：开启后随中英文联想 / 整句补全请求发送；逗号、分号或换行分隔
 scenarios_enabled = false
 scenarios = ""
+# 译词上屏没有任何译词时，用选区翻译渠道翻译候选或整句后自动上屏
+translation_commit_fallback = false
 
 [predict.gloss]
 # 上屏后自动补充本地缺失的释义；云服务总开关也必须开启
@@ -514,7 +516,16 @@ impl Config {
             path: path.to_owned(),
             source: Box::new(source),
         })?;
-        section_table(&mut document, section).insert(key, toml_edit::value(value));
+        let table = section_table(&mut document, section);
+        let mut replacement = value.into();
+        if let Some(previous) = table.get(key).and_then(toml_edit::Item::as_value) {
+            *replacement.decor_mut() = previous.decor().clone();
+        }
+        if let Some(previous) = table.get_mut(key) {
+            *previous = toml_edit::Item::Value(replacement);
+        } else {
+            table.insert(key, toml_edit::Item::Value(replacement));
+        }
         // 写临时文件再改名：输入法进程随时可能被杀，不能留半个配置文件
         write_file(path, &document.to_string())
     }

@@ -210,6 +210,12 @@ pub struct Engine {
     /// 独立渠道的选区翻译。
     selection_translator: Box<dyn SelectionTranslator>,
 
+    selection_translation_enabled: bool,
+
+    translation_commit_fallback: bool,
+
+    translation_commit: Option<commit::TranslationCommit>,
+
     /// 候选窗口当前页上的译词（壳每次画完告知），上屏时记成「看到过」。
     displayed: Vec<(Language, String)>,
 
@@ -430,6 +436,9 @@ impl Engine {
             vocabulary: Box::new(NoVocabularyTracker),
             gloss_filler: Box::new(NoGlossFiller),
             selection_translator: Box::new(NoSelectionTranslator),
+            selection_translation_enabled: true,
+            translation_commit_fallback: false,
+            translation_commit: None,
             displayed: Vec::new(),
             last_query: std::cell::RefCell::new(None),
             recording: Vec::new(),

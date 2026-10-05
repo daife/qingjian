@@ -149,6 +149,9 @@ impl Component for Settings {
             Message::CloudChineseWords(on) => self.save("predict", "chinese_words", on),
             Message::CloudEnglishWords(on) => self.save("predict", "english_words", on),
             Message::CloudGloss(on) => self.save("predict.gloss", "enabled", on),
+            Message::CloudTranslationCommitFallback(on) => {
+                self.save("predict", "translation_commit_fallback", on)
+            }
             Message::CloudTranslation(on) => self.save("predict.translation", "enabled", on),
             Message::CloudGlossChannel(Some(i))
                 if i < qingjian_predict::TranslationChannel::ALL.len() =>

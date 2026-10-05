@@ -131,10 +131,18 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 .on_toggled(context.callback(Message::CloudTranslation)),
         ),
         field(
+            "译词上屏托底（整句包含在内）",
+            "没有任何译词时，使用选区翻译渠道翻译候选或整句并上屏。译文返回后自动上屏，继续输入会取消等待。",
+            ToggleSwitch::new()
+                .is_enabled(p.enabled)
+                .is_on(p.translation_commit_fallback)
+                .on_toggled(context.callback(Message::CloudTranslationCommitFallback)),
+        ),
+        field(
             "选区翻译渠道",
             "共用大模型云服务使用下方的地址、模型与密钥。",
             ComboBox::new()
-                .is_enabled(p.enabled && p.translation.enabled)
+                .is_enabled(p.enabled && (p.translation.enabled || p.translation_commit_fallback))
                 .items_source(
                     qingjian_predict::TranslationChannel::ALL
                         .iter()

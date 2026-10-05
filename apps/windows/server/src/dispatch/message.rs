@@ -124,6 +124,7 @@ impl Router {
     fn handle_key(&mut self, session: SessionId, event: KeyEvent) -> ServerMessage {
         self.ensure_focus(session);
         self.notice = None;
+        self.engine.cancel_translation_commit();
         if self.translation.is_some() {
             return self.handle_translation_review(session, &event);
         }
@@ -170,7 +171,18 @@ impl Router {
         if learned > 0 {
             tracing::info!(learned, "释义兜底写入个人释义表");
         }
+        let mut commit = None;
         let frame = if self.focused == Some(session) {
+            let waiting = self.engine.translation_commit_pending();
+            commit = self.engine.poll_translation_commit();
+            if waiting && !self.engine.translation_commit_pending() {
+                self.notice = commit
+                    .is_none()
+                    .then(|| "翻译未完成，输入已保留".to_owned());
+            }
+            if commit.is_some() {
+                self.recompose();
+            }
             self.poll_prediction();
             let shown = self.self_drawn_frame();
             self.reconcile_candidates(&shown);
@@ -178,6 +190,10 @@ impl Router {
         } else {
             Frame::default()
         };
-        ServerMessage::Update { session, frame }
+        ServerMessage::Update {
+            session,
+            frame,
+            commit,
+        }
     }
 }

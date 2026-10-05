@@ -192,7 +192,7 @@ P2C 自由生成实验：`--eval-text <集> --eval-generate data/models/hanzhang
 （`[aux_code] disabled` 是黑名单，`[general] aux_code_key` 缺省 `;` 且校验后退回缺省、`aux_code_show` 是显示码开关）；
 `protocol` 模块是 Windows Server ↔ TSF DLL 的 IPC 协议类型
 （`ClientMessage` / `ServerMessage` / `Frame` / `PreeditSegment`，全 serde，两端共用，见 `docs/design/architecture.md`「Windows：TSF」；
-`PROTOCOL_VERSION` = 7（v7 加任务栏图标右键菜单的 `Indicator`），`PreeditKind::AuxCode` 对应 Core 的 `MarkedKind::AuxCode`，`Frame.aux_code_show` 随帧下发显示码开关）。
+`PROTOCOL_VERSION` = 8（v8 在 `Update` 中增加可选 `commit`，用于异步译词上屏托底；旧 DLL 不能接收异步上屏时不启动托底）（v7 加任务栏图标右键菜单的 `Indicator`），`PreeditKind::AuxCode` 对应 Core 的 `MarkedKind::AuxCode`，`Frame.aux_code_show` 随帧下发显示码开关）。
 
 ## crates/qingjian-render
 
@@ -362,3 +362,9 @@ Unix socket 用共享长度前缀与 Frame（当前公共版本 7，与 `PROTOCO
 Windows 固定空格 / 回车触发方式：`[shortcut] enter_on_release` / `space_on_release` 缺省 true（短按松开触发）；`short_press_ms` 缺省 500，范围 100–2000 毫秒。`enter_hold` / `space_hold` 是 `CommitAction`（`none` / `candidate` / `raw` / `first_translation` / `insert_space`），缺省分别为高亮候选首译词上屏与缓冲区光标处插入空格；启用长按动作时 `ShortcutConfig::enter_release` / `space_release` 强制返回 true，设置页锁定对应短按开关。Server 通过 `InputSettings` 随 `OpenSession` / `ModeSync` 下发有效短按方式、阈值与长按启用状态；TSF `com/key/release` 保存按下时的事件、上下文与单调时钟，吞掉自动重复，`OnTestKeyUp` 只查询，`OnKeyUp` 才取走并转发。按下时在 TSF 消息窗口启动独立的单次长按定时器，达到阈值即发 `KeyEvent::long_press`，由 Server 根据自身配置分派动作；转发前标记已处理，继续吞掉自动重复与松开，不再执行短按。松开仅处理未达到阈值的短按。首译词复用 `Engine::commit_translation`，候选来自当前高亮与当前页，缺译词就保留缓冲区。中途其他键、失焦、切模式或热加载取消，组句之外不延迟应用的空格 / 回车；选区翻译评审只允许短按接受。旧协议没有新增字段时仍按普通键处理。
 
 英文云补全使用 `PredictionKind::English`，传递作用域原文与裁剪后的应用上下文，不做拼音解码或云词校验，只返回整句。Windows 英文组句有整句结果时 Tab 优先接受补全，无结果时仍选择高亮英文候选。
+
+### 译词上屏托底
+
+`[predict] translation_commit_fallback` 默认 false，Windows/macOS 云服务页提供「译词上屏托底（整句包含在内）」。与选区快捷键开关独立，复用 `[predict.translation] channel`：渠道工厂在选区翻译或托底任一开启时创建服务，Engine 分别控制两个入口。`commit_translation` 完全无非空译词时提交 Translate 请求，候选（含 Sentence / Generated）、输入全文、光标、请求序号与开始时间保存在 `commit::TranslationCommit`。`poll_translation_commit` 在非私密、输入未变、请求未作废且 90 秒内收取结果，成功后按原候选调用 `commit_with` 消耗输入，返回译文给壳上屏，不写成个人释义；失败保留输入。已有第一条但缺第二条时不请求。Core 和壳在编辑、普通上屏、取消、焦点或渠道切换时作废。
+
+Windows Poll 经协议 `Update.commit` 回到 TSF 的当前编辑上下文；v7 及更老 DLL 不启动托底，提示重新打开应用。macOS 短期 NSTimer 持有原控制器与客户端，并按请求序号隔离不同托底；只负责轮询 Core 与写入文档。预测轮询在托底未完成时不读取选区渠道，避免抢走翻译回复。

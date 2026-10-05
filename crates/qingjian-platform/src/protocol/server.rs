@@ -108,6 +108,10 @@ pub enum ServerMessage {
 
     /// 不由按键触发的重绘（云联想补词、本地整句模型重排到达）。
     Update {
+        /// 异步译词上屏托底的提交文本；旧端忽略此字段。
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        commit: Option<String>,
+
         /// 会话标识。
         session: SessionId,
 

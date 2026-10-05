@@ -352,6 +352,10 @@ impl Host {
             (Setting::CloudGloss, SettingValue::Bool(on)) => {
                 self.settings.set_bool("predict.gloss", "enabled", on);
             }
+            (Setting::CloudTranslationCommitFallback, SettingValue::Bool(on)) => {
+                self.settings
+                    .set_bool("predict", "translation_commit_fallback", on);
+            }
             (Setting::CloudTranslation, SettingValue::Bool(on)) => {
                 self.settings.set_bool("predict.translation", "enabled", on);
             }

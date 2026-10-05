@@ -49,7 +49,9 @@ impl Engine {
 
     /// 是否允许翻译选中文字。
     pub fn translation_enabled(&self) -> bool {
-        self.selection_translator.is_enabled() && !self.private
+        self.selection_translation_enabled
+            && self.selection_translator.is_enabled()
+            && !self.private
     }
 
     pub fn prediction_policy(&self) -> PredictionPolicy {
@@ -202,8 +204,17 @@ impl Engine {
     /// （[`translation_target`]）。云联想关着、私密输入中、文字为空时不发，返回 `None`；
     /// 译文从 [`Self::poll_prediction`] 的 `sentence` 里出。不进学习、不动缓冲区。
     pub fn request_translation(&mut self, text: &str) -> Option<u64> {
+        self.cancel_translation_commit();
         let text = text.trim();
         if !self.translation_enabled() || text.is_empty() {
+            return None;
+        }
+        self.submit_translation(text)
+    }
+
+    pub(super) fn submit_translation(&mut self, text: &str) -> Option<u64> {
+        let text = text.trim();
+        if self.private || !self.selection_translator.is_enabled() || text.is_empty() {
             return None;
         }
         self.prediction_sequence += 1;
@@ -231,6 +242,7 @@ impl Engine {
 
     /// 作废正在飞的联想（用户清空了拼音、关掉了联想框）。
     pub fn cancel_prediction(&mut self) {
+        self.cancel_translation_commit();
         self.prediction_sequence += 1;
     }
 
@@ -238,8 +250,7 @@ impl Engine {
     /// 结果可能是空的（模型没给出可用条目），壳据此停止等待。
     pub fn poll_prediction(&mut self) -> Option<Prediction> {
         while let Some(mut prediction) = self
-            .selection_translator
-            .poll()
+            .poll_selection_prediction()
             .or_else(|| self.predictor.poll())
         {
             if prediction.sequence == self.prediction_sequence {
@@ -320,6 +331,14 @@ impl Engine {
             );
         }
         None
+    }
+
+    fn poll_selection_prediction(&mut self) -> Option<Prediction> {
+        if self.translation_commit.is_some() {
+            None
+        } else {
+            self.selection_translator.poll()
+        }
     }
 
     /// 只留下拼音对得上的云端词：字数等于音节数、每个音节合法、全拼与用户敲的字母的编辑距离在容许范围内

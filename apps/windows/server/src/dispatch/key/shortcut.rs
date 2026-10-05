@@ -2,7 +2,7 @@
 
 use qingjian_core::{Candidate, CandidateList};
 use qingjian_platform::CommitAction;
-use qingjian_platform::protocol::{KeyEvent, KeyModifiers};
+use qingjian_platform::protocol::{KeyEvent, KeyModifiers, TRANSLATION_COMMIT_SINCE};
 
 use super::Effect;
 use crate::dispatch::Router;
@@ -65,9 +65,27 @@ impl Router {
             tracing::debug!(digit, "这一格没有候选");
             return Effect::Navigated;
         };
+        if self.focused.is_some_and(|session| {
+            self.sessions
+                .get(&session)
+                .is_some_and(|info| info.protocol < TRANSLATION_COMMIT_SINCE)
+        }) && self.engine.translation_commit_fallback_enabled()
+            && !candidate.translation.as_ref().is_some_and(|translation| {
+                translation
+                    .senses()
+                    .iter()
+                    .any(|sense| !sense.text.trim().is_empty())
+            })
+        {
+            self.notice = Some("请重新打开当前应用以使用译词上屏托底".to_owned());
+            return Effect::Navigated;
+        }
         match self.engine.commit_translation(&candidate, sense) {
             Some(text) => Effect::Changed(Some(text)),
             None => {
+                if self.engine.translation_commit_pending() {
+                    self.notice = Some("正在翻译，继续输入可取消…".to_owned());
+                }
                 tracing::debug!(digit, sense, "这个候选没有这条译文");
                 Effect::Navigated
             }

@@ -71,6 +71,9 @@ pub enum Setting {
     /// `[predict.translation] enabled`。
     CloudTranslation,
 
+    /// `[predict] translation_commit_fallback`。
+    CloudTranslationCommitFallback,
+
     /// `[predict.gloss] channel`。
     CloudGlossChannel,
 
@@ -245,6 +248,7 @@ impl Setting {
             Self::CloudEnglishWords => 62,
             Self::CloudGloss => 63,
             Self::CloudTranslation => 64,
+            Self::CloudTranslationCommitFallback => 67,
             Self::CloudGlossChannel => 65,
             Self::CloudTranslationChannel => 66,
             Self::CloudSentence => 59,
@@ -321,6 +325,7 @@ impl Setting {
             62 => Self::CloudEnglishWords,
             63 => Self::CloudGloss,
             64 => Self::CloudTranslation,
+            67 => Self::CloudTranslationCommitFallback,
             65 => Self::CloudGlossChannel,
             66 => Self::CloudTranslationChannel,
             59 => Self::CloudSentence,
@@ -409,6 +414,7 @@ mod tests {
             Setting::CloudEnglishWords,
             Setting::CloudGloss,
             Setting::CloudTranslation,
+            Setting::CloudTranslationCommitFallback,
             Setting::CloudGlossChannel,
             Setting::CloudTranslationChannel,
             Setting::CloudSentence,

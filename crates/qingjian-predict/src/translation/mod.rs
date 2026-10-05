@@ -11,7 +11,7 @@ mod cloud_translator;
 pub fn build_selection_translator(
     config: &crate::PredictConfig,
 ) -> Result<Box<dyn qingjian_core::SelectionTranslator>, crate::PredictError> {
-    if !config.enabled || !config.translation.enabled {
+    if !config.enabled || !(config.translation.enabled || config.translation_commit_fallback) {
         return Ok(Box::new(qingjian_core::NoSelectionTranslator));
     }
     match config.translation.channel {

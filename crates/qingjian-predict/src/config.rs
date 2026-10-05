@@ -17,6 +17,9 @@ pub struct PredictConfig {
     /// 翻译选中文字的独立配置。
     pub translation: crate::TranslationConfig,
 
+    /// 无译词时使用选区翻译渠道翻译候选或整句并上屏。
+    pub translation_commit_fallback: bool,
+
     /// 是否启用。
     pub enabled: bool,
 
@@ -69,6 +72,7 @@ impl Default for PredictConfig {
     fn default() -> Self {
         Self {
             enabled: false,
+            translation_commit_fallback: false,
             chinese_words: true,
             english_words: false,
             gloss: crate::TranslationConfig::default(),

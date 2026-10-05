@@ -22,6 +22,7 @@ mod commit;
 mod display;
 mod text;
 mod translate;
+mod translation_commit;
 
 define_class!(
     // SAFETY:
@@ -196,6 +197,7 @@ impl QingjianInputController {
         if event.r#type() != NSEventType::KeyDown || self.in_login_window() {
             return false;
         }
+        host::with(|h| h.engine.cancel_translation_commit());
         let flags = event.modifierFlags();
         let (command, control, option, shift) = (
             flags.contains(NSEventModifierFlags::Command),

@@ -124,6 +124,7 @@ impl Engine {
 
     /// 组句里要删东西了：第一次删之前把缓冲区留个快照，上屏时对比最终键串，不同就是一次重打（`retype`）。
     fn note_edit(&mut self) {
+        self.cancel_translation_commit();
         if self.retype_snapshot.is_none() && !self.composition.is_empty() {
             self.retype_snapshot = Some(self.composition.text().to_owned());
         }
@@ -166,6 +167,7 @@ impl Engine {
     }
 
     pub fn push(&mut self, c: char) {
+        self.cancel_translation_commit();
         if self.composition.is_empty() {
             // 新一段组句：从这一键起算耗时、翻页与重打
             self.composition_started = Some(Instant::now());
@@ -203,6 +205,7 @@ impl Engine {
     }
 
     pub fn clear(&mut self) {
+        self.cancel_translation_commit();
         self.composition.clear();
         self.aux_code = None;
         self.chain.leave_buffer();
@@ -331,6 +334,7 @@ impl Engine {
 
     /// 用一段完整拼音替换当前缓冲区，供 CLI 和测试一次性喂入。
     pub fn set_input(&mut self, input: &str) {
+        self.cancel_translation_commit();
         self.composition.clear();
         for c in input.chars() {
             self.push(c);
@@ -339,6 +343,7 @@ impl Engine {
 
     /// 放弃当前拼音，原样返回给壳（通常是用户按回车要上屏字母本身）。
     pub fn take_raw(&mut self) -> String {
+        self.cancel_translation_commit();
         // 回车原样上屏拼音段：码段（没上屏的码）到此结束
         self.aux_code = None;
         // 纠错生效时用户仍按了回车：这个串就是要原样打的，记下来以后不再纠它

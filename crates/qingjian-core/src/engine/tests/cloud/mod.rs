@@ -192,7 +192,7 @@ fn stale_predictions_are_dropped_and_accept_clears_composition() {
     let submitted = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
     let mut engine = engine().with_predictor(Box::new(EchoPredictor {
         submitted,
-        sentence: false,
+        sentence: true,
         replies: vec![
             Prediction {
                 sequence: 2,

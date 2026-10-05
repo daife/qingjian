@@ -70,3 +70,17 @@ fn youdao_channels_are_independent_and_need_no_llm_credentials() {
     assert!(!build_gloss_filler(&config).unwrap().is_enabled());
     assert!(!build_selection_translator(&config).unwrap().is_enabled());
 }
+
+#[test]
+fn fallback_uses_selected_channel_even_when_selection_hotkey_is_disabled() {
+    let config = PredictConfig {
+        enabled: true,
+        translation_commit_fallback: true,
+        translation: crate::TranslationConfig {
+            enabled: false,
+            channel: TranslationChannel::YoudaoPublic,
+        },
+        ..PredictConfig::default()
+    };
+    assert!(build_selection_translator(&config).unwrap().is_enabled());
+}

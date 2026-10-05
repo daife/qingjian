@@ -360,6 +360,9 @@ impl Engine {
     /// 进入 / 离开英文模式。英文模式下 [`Self::query`] 只给英文词表的候选，回车与空格仍由壳原样上屏敲的字母，
     /// 不发云联想，也不把原样上屏记成「不纠这个串」。
     pub fn set_english_mode(&mut self, on: bool) {
+        if self.english_mode != on {
+            self.cancel_translation_commit();
+        }
         self.english_mode = on;
     }
 
@@ -385,6 +388,7 @@ impl Engine {
     }
 
     pub fn set_translator(&mut self, translator: Box<dyn Translator>) {
+        self.cancel_translation_commit();
         self.translator = translator;
     }
 
@@ -470,6 +474,12 @@ impl Engine {
     ) -> Self {
         self.set_selection_translator(translator);
         self
+    }
+
+    /// 选区快捷键的独立开关；译词上屏托底仍可复用同一渠道。
+    pub fn set_selection_translation_enabled(&mut self, enabled: bool) {
+        self.cancel_prediction();
+        self.selection_translation_enabled = enabled;
     }
 
     /// 切换选区翻译渠道，作废旧渠道的在飞结果。

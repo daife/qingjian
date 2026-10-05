@@ -45,6 +45,7 @@ impl Router {
                 self.ensure_focus(session);
                 self.tick();
                 Some(ServerMessage::Update {
+                    commit: None,
                     session,
                     frame: self.current_frame(),
                 })

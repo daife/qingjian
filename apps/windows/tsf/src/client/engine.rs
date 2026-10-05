@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use qingjian_platform::protocol::{
-    ClientMessage, Frame, IndicatorCommand, InputSettings, KeyEvent, PROTOCOL_VERSION, ScreenRect,
+    ClientMessage, IndicatorCommand, InputSettings, KeyEvent, PROTOCOL_VERSION, ScreenRect,
     ServerMessage, SessionId, read_message, write_message,
 };
 
@@ -114,11 +114,15 @@ impl<S: Read + Write> EngineClient<S> {
     }
 
     /// 组句期间定时拉一次云联想的异步结果，回最新一帧。
-    pub fn poll(&mut self) -> Result<Frame, ClientError> {
+    pub fn poll(&mut self) -> Result<KeyResponse, ClientError> {
         match self.call(&ClientMessage::Poll {
             session: self.session,
         })? {
-            ServerMessage::Update { frame, .. } => Ok(frame),
+            ServerMessage::Update { frame, commit, .. } => Ok(KeyResponse {
+                outcome: qingjian_platform::protocol::KeyOutcome::Consumed,
+                commit,
+                frame,
+            }),
             _ => Err(ClientError::Unexpected("expected update for poll")),
         }
     }

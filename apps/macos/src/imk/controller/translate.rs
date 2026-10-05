@@ -1,6 +1,8 @@
 //! 翻译选中文字、译词键与删候选键。
 
-use super::*;
+use super::{MAX_TRANSLATE_CHARS, QingjianInputController};
+use crate::host;
+use crate::imk::{TextClient, secure_input};
 
 impl QingjianInputController {
     /// Option+数字：上屏当前页第几个候选的译文（学习和拼音消耗与选那个候选一样）。
@@ -94,7 +96,12 @@ impl QingjianInputController {
                 client.insert_text(&text);
                 self.refresh(client);
             }
-            None => tracing::debug!(digit, sense, "这个候选没有这条译文"),
+            None => {
+                if host::with(|h| h.engine.translation_commit_pending()).unwrap_or(false) {
+                    super::translation_commit::await_translation_commit(self, client);
+                }
+                tracing::debug!(digit, sense, "这个候选没有这条译文");
+            }
         }
         true
     }

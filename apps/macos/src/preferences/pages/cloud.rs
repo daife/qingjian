@@ -39,6 +39,8 @@ pub struct CloudPage {
     /// 翻译选中文字。
     translation: Retained<NSButton>,
 
+    translation_commit_fallback: Retained<NSButton>,
+
     /// 释义补全渠道。
     gloss_channel: Retained<NSPopUpButton>,
 
@@ -127,6 +129,18 @@ impl CloudPage {
         row_checkbox(layout, &gloss);
         let translation = checkbox(mtm, "翻译选中文字", Setting::CloudTranslation, target);
         row_checkbox(layout, &translation);
+        let translation_commit_fallback = checkbox(
+            mtm,
+            "译词上屏托底（整句包含在内）",
+            Setting::CloudTranslationCommitFallback,
+            target,
+        );
+        row_checkbox(layout, &translation_commit_fallback);
+        note(
+            layout,
+            mtm,
+            "没有任何译词时使用选区翻译渠道翻译并上屏；译文返回后自动上屏，继续输入会取消等待。",
+        );
         let gloss_channel = row_popup(
             layout,
             mtm,
@@ -188,6 +202,7 @@ impl CloudPage {
             english_words,
             gloss,
             translation,
+            translation_commit_fallback,
             gloss_channel,
             translation_channel,
             sentence,
@@ -217,6 +232,11 @@ impl CloudPage {
         self.gloss.setEnabled(cloud);
         set_checked(&self.translation, config.predict.translation.enabled);
         self.translation.setEnabled(cloud);
+        set_checked(
+            &self.translation_commit_fallback,
+            config.predict.translation_commit_fallback,
+        );
+        self.translation_commit_fallback.setEnabled(cloud);
         select(
             &self.gloss_channel,
             qingjian_predict::TranslationChannel::ALL
@@ -231,8 +251,11 @@ impl CloudPage {
                 .iter()
                 .position(|c| *c == config.predict.translation.channel),
         );
-        self.translation_channel
-            .setEnabled(cloud && config.predict.translation.enabled);
+        self.translation_channel.setEnabled(
+            cloud
+                && (config.predict.translation.enabled
+                    || config.predict.translation_commit_fallback),
+        );
 
         set_checked(&self.sentence, config.predict.sentence);
         set_checked(&self.english_sentence, config.predict.english_sentence);

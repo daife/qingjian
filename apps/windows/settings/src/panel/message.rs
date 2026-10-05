@@ -49,6 +49,7 @@ pub(crate) enum Message {
     CloudGloss(bool),
     CloudGlossChannel(Option<usize>),
     CloudTranslation(bool),
+    CloudTranslationCommitFallback(bool),
     CloudTranslationChannel(Option<usize>),
     CloudSentence(bool),
     CloudEnglishSentence(bool),

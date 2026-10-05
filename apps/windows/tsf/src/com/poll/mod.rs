@@ -144,7 +144,16 @@ fn poll_once(context: &PollContext) {
         return;
     };
     match client.poll() {
-        Ok(frame) => {
+        Ok(response) => {
+            if response.commit.is_some() {
+                drop(guard);
+                super::service::on_translation_commit(
+                    response.commit,
+                    super::composition::preedit_string(&response.frame),
+                );
+                return;
+            }
+            let frame = response.frame;
             // 翻译评审时回空帧 = 翻译已在 Server 侧结束（云端没给译文）。
             if translating && frame.is_empty() {
                 drop(guard);

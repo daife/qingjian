@@ -141,6 +141,15 @@ pub(super) fn on_hold_timer() {
     with_active(TextService_Impl::fire_hold);
 }
 
+/// 将轮询收到的译文通过当前编辑上下文上屏。
+pub(super) fn on_translation_commit(commit: Option<String>, preedit: String) {
+    with_active(|service| {
+        if let Some(context) = service.shared.last_context() {
+            service.update_document((&context).into(), commit, preedit);
+        }
+    });
+}
+
 /// 轮询发现前台会话没连着 Server（见 [`super::poll`]）：补连一次。
 pub(super) fn on_reconnect_tick() {
     with_active(|service| {
