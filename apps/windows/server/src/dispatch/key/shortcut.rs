@@ -1,12 +1,37 @@
 //! 组句中「修饰键 + 数字」的快捷键：上屏译词、删候选。与 macOS 壳对齐。
 
 use qingjian_core::{Candidate, CandidateList};
-use qingjian_platform::protocol::KeyModifiers;
+use qingjian_platform::CommitAction;
+use qingjian_platform::protocol::{KeyEvent, KeyModifiers};
 
 use super::Effect;
 use crate::dispatch::Router;
 
 impl Router {
+    /// 长按动作按 Server 的当前配置解析；没有候选 / 译词时保留缓冲区。
+    pub(super) fn apply_hold(&mut self, event: &KeyEvent) -> Effect {
+        if event.modifiers.has_command_key() || self.engine.composition().is_empty() {
+            return Effect::Navigated;
+        }
+        let action = match event.virtual_key {
+            0x0d => self.config.enter_hold,
+            0x20 => self.config.space_hold,
+            _ => return Effect::Navigated,
+        };
+        match action {
+            CommitAction::None => Effect::Navigated,
+            CommitAction::Candidate => match self.commit_index(self.highlight) {
+                Some(text) => Effect::Changed(Some(text)),
+                None => Effect::Navigated,
+            },
+            CommitAction::Raw => Effect::Changed(Some(self.engine.take_raw())),
+            CommitAction::FirstTranslation => {
+                let digit = self.highlight % self.config.page_size + 1;
+                self.commit_translation_on_page(digit, 0)
+            }
+        }
+    }
+
     /// 配到哪组就上屏第一 / 第二个译词或删候选；哪组都不是返回 `None`，按普通键处理。
     pub(super) fn apply_digit_shortcut(
         &mut self,

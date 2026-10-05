@@ -73,3 +73,77 @@ fn deleting_a_candidate_shows_a_notice_until_next_key() {
     let (_, _, next) = press(&mut router, KeyEvent::new(0x28, None, Default::default())); // VK_DOWN
     assert_eq!(next.notice, None, "提示应只活到下一次按键");
 }
+
+fn held_key(vk: u32) -> KeyEvent {
+    let mut event = KeyEvent::new(vk, (vk == 0x20).then_some(' '), Default::default());
+    event.long_press = true;
+    event
+}
+
+#[test]
+fn held_space_commits_the_highlighted_translation_on_another_page() {
+    let mut router = router_with(RouterConfig {
+        page_size: 1,
+        ..RouterConfig::default()
+    });
+    let (_, _, frame) = type_letters(&mut router, "nihao");
+    assert_eq!(frame.candidates.items[0].text, "你好");
+    // 第二页的「你」：不能误选首选「你好」，译词上屏后保留未消耗的 hao。
+    let (_, _, frame) = press(&mut router, function_key(0x28));
+    assert_eq!(frame.candidates.items[frame.highlight].text, "你");
+    let (outcome, commit, after) = press(&mut router, held_key(0x20));
+    assert_eq!(
+        (outcome, commit.as_deref()),
+        (KeyOutcome::Consumed, Some("you"))
+    );
+    assert_eq!(preedit(&after), "hao");
+}
+
+#[test]
+fn held_space_without_a_translation_preserves_input() {
+    let mut router = router();
+    type_letters(&mut router, "no-way");
+    let (outcome, commit, after) = press(&mut router, held_key(0x20));
+    assert_eq!((outcome, commit), (KeyOutcome::Consumed, None));
+    assert_eq!(preedit(&after), "no-way");
+}
+
+#[test]
+fn held_enter_is_disabled_by_default_and_supports_raw_and_candidate_actions() {
+    use qingjian_platform::CommitAction;
+    for (action, expected) in [
+        (CommitAction::None, None),
+        (CommitAction::Raw, Some("nihao")),
+        (CommitAction::Candidate, Some("你好")),
+        (CommitAction::FirstTranslation, Some("hello")),
+    ] {
+        let mut router = router_with(RouterConfig {
+            enter_hold: action,
+            ..RouterConfig::default()
+        });
+        type_letters(&mut router, "nihao");
+        let (outcome, commit, after) = press(&mut router, held_key(0x0d));
+        assert_eq!(
+            (outcome, commit.as_deref()),
+            (KeyOutcome::Consumed, expected)
+        );
+        assert_eq!(after.is_empty(), expected.is_some());
+    }
+}
+
+#[test]
+fn server_settings_force_release_with_hold_enabled() {
+    use qingjian_platform::{CommitAction, Config};
+    let mut config = Config::default();
+    config.shortcut.enter_on_release = false;
+    config.shortcut.space_on_release = false;
+    config.shortcut.enter_hold = CommitAction::Raw;
+    let mut router = router_with(RouterConfig::from(&config));
+    match router.handle(ClientMessage::SyncMode { session: SESSION }) {
+        Some(ServerMessage::ModeSync { input, .. }) => {
+            assert!(input.enter_on_release && input.space_on_release);
+            assert!(input.enter_hold_enabled && input.space_hold_enabled);
+        }
+        other => panic!("expected ModeSync, got {other:?}"),
+    }
+}

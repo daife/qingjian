@@ -1,6 +1,7 @@
 mod apps;
 mod aux_code;
 mod candidate_renderer;
+mod commit_action;
 mod dictionaries;
 mod general;
 mod key_combo;
@@ -32,6 +33,7 @@ pub use apps::{
 };
 pub use aux_code::AuxCodeConfig;
 pub use candidate_renderer::CandidateRenderer;
+pub use commit_action::CommitAction;
 pub use dictionaries::{DEFAULT_DOMAINS, DictionariesConfig};
 pub use general::{
     DEFAULT_PAGE_KEYS, GeneralConfig, LEARNING_LANGUAGE_OFF, MAX_PAGE_SIZE, PAGE_KEY_OPTIONS,
@@ -159,9 +161,12 @@ macro_rules! template_shortcut_keys {
 # macOS 的切换键是 Caps Lock（系统级），本项不生效
 switch_mode = ["shift"]
 # Windows 固定回车 / 空格：false 按下触发，true 短按松开触发；超过阈值不触发
-enter_on_release = false
-space_on_release = false
+enter_on_release = true
+space_on_release = true
 short_press_ms = 500
+# 长按动作：none / candidate / raw / first_translation；开启后对应短按强制松开触发
+enter_hold = "none"
+space_hold = "first_translation"
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（option / shift / control / command 用 + 连），偏好设置里点按钮录制；别用 control+数字（系统切桌面）和 command+数字（应用切标签页）
 translation = "option"
@@ -183,9 +188,12 @@ macro_rules! template_shortcut_keys {
 # 不提供 Ctrl + Space：中文 Windows 把它绑成系统的「输入法/非输入法切换」，系统先截走
 switch_mode = ["shift"]
 # Windows 固定回车 / 空格：false 按下触发，true 短按松开触发；超过阈值不触发
-enter_on_release = false
-space_on_release = false
+enter_on_release = true
+space_on_release = true
 short_press_ms = 500
+# 长按动作：none / candidate / raw / first_translation；开启后对应短按强制松开触发
+enter_hold = "none"
+space_hold = "first_translation"
 # 数字键配这些修饰键上屏候选的译词：translation 第一个译词，translation_second 第二个（候选右侧有两个译词时）
 # 任意修饰键组合（alt / shift / ctrl / win 用 + 连）。Alt+数字会被 Windows 当菜单快捷键截走，缺省用 Ctrl；组句时才拦，不打字时照常放行给应用
 translation = "ctrl"

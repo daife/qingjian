@@ -1,6 +1,7 @@
 use qingjian_core::ModeKeys;
 use serde::{Deserialize, Serialize};
 
+use super::commit_action::CommitAction;
 use super::key_combo::KeyCombo;
 use super::modifiers::Modifiers;
 use super::switch_key::SwitchKeys;
@@ -16,11 +17,17 @@ pub struct ShortcutConfig {
     /// 中 / 英切换键（Windows 用），可多选：`["shift", "control", "ctrl+alt+space"]`。详见 [`SwitchKeys`]。
     pub switch_mode: SwitchKeys,
 
-    /// Windows：回车短按松开时才执行原功能，固定键不可重绑。
+    /// Windows：回车原样上屏（注音模式为选词）在短按松开时触发，固定键不可重绑。
     pub enter_on_release: bool,
 
-    /// Windows：空格短按松开时才执行原功能，固定键不可重绑。
+    /// Windows：空格选词（注音待补声调时输入一声）在短按松开时触发，固定键不可重绑。
     pub space_on_release: bool,
+
+    /// Windows：长按回车的动作，关闭时不执行。
+    pub enter_hold: CommitAction,
+
+    /// Windows：长按空格的动作，默认上屏高亮候选的首个译词。
+    pub space_hold: CommitAction,
 
     /// 短按的最长按住时间（毫秒），超过时松开不触发。
     pub short_press_ms: u64,
@@ -46,8 +53,10 @@ impl Default for ShortcutConfig {
         #[cfg(not(windows))]
         let (translation, translation_second) = (Modifiers::OPTION, Modifiers::SHIFT_OPTION);
         Self {
-            enter_on_release: false,
-            space_on_release: false,
+            enter_on_release: true,
+            space_on_release: true,
+            enter_hold: CommitAction::None,
+            space_hold: CommitAction::FirstTranslation,
             short_press_ms: 500,
             mode: ModeKeys::default(),
             switch_mode: SwitchKeys::default(),
@@ -60,6 +69,15 @@ impl Default for ShortcutConfig {
 }
 
 impl ShortcutConfig {
+    /// 启用长按动作就强制短按松开触发，避免按下时先把候选消耗掉。
+    pub fn enter_release(&self) -> bool {
+        self.enter_on_release || self.enter_hold.enabled()
+    }
+
+    pub fn space_release(&self) -> bool {
+        self.space_on_release || self.space_hold.enabled()
+    }
+
     /// 删候选的修饰键；空组合表示关闭，启用时与译词键撞了才退回缺省。
     pub fn delete_keys(&self) -> Modifiers {
         let (first, second) = self.translation_keys();
@@ -88,9 +106,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fixed_commit_keys_default_to_press_and_round_trip_release_settings() {
+    fn fixed_commit_keys_default_to_release_and_round_trip_settings() {
         let old: ShortcutConfig = toml::from_str("").unwrap();
-        assert!(!old.enter_on_release && !old.space_on_release);
+        assert!(old.enter_on_release && old.space_on_release);
+        assert_eq!(old.space_hold, CommitAction::FirstTranslation);
         assert_eq!(old.short_press_ms, 500);
         let config: ShortcutConfig = toml::from_str(
             "enter_on_release = true\nspace_on_release = true\nshort_press_ms = 750\n",
@@ -102,6 +121,18 @@ mod tests {
             toml::from_str::<ShortcutConfig>(&toml::to_string(&config).unwrap()).unwrap(),
             config
         );
+    }
+
+    #[test]
+    fn hold_actions_force_release_even_when_the_file_requests_press() {
+        let config: ShortcutConfig = toml::from_str(
+            "enter_on_release = false\nspace_on_release = false\nenter_hold = \"raw\"\nspace_hold = \"first_translation\"\n"
+        ).unwrap();
+        assert!(config.enter_release() && config.space_release());
+        let off: ShortcutConfig = toml::from_str(
+            "enter_on_release = false\nspace_on_release = false\nenter_hold = \"none\"\nspace_hold = \"none\"\n"
+        ).unwrap();
+        assert!(!off.enter_release() && !off.space_release());
     }
 
     #[test]

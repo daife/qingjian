@@ -1,7 +1,7 @@
 //! 「快捷键」页：翻页键、模式键，译词 / 删候选 / 翻译选中文字的修饰键。
 //! 翻译选中文字只改修饰键，字母键固定用配置里当前的；要换字母直接改 `config.toml`。
 
-use qingjian_platform::Modifiers;
+use qingjian_platform::{CommitAction, Modifiers};
 use windows_reactor::{
     Callback, ChildrenControl, ComboBox, NumberBox, StackPanel, ToggleSwitch, View, ViewContext,
 };
@@ -58,21 +58,47 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
     let s = &settings.config.shortcut;
     let rows = [
         field(
+            "长按空格（Space）",
+            "按键固定，超过阈值后松开执行。启用后空格选词改为短按松开触发；没有译词时保留输入内容。",
+            ComboBox::new()
+                .items_source(CommitAction::ALL.iter().map(|action| action.label()))
+                .selected_index(
+                    CommitAction::ALL
+                        .iter()
+                        .position(|action| *action == s.space_hold),
+                )
+                .on_selection_changed(context.callback(Message::SpaceHold)),
+        ),
+        field(
+            "长按回车（Enter）",
+            "按键固定，超过阈值后松开执行。启用后回车原样上屏改为短按松开触发（注音模式为选词）。",
+            ComboBox::new()
+                .items_source(CommitAction::ALL.iter().map(|action| action.label()))
+                .selected_index(
+                    CommitAction::ALL
+                        .iter()
+                        .position(|action| *action == s.enter_hold),
+                )
+                .on_selection_changed(context.callback(Message::EnterHold)),
+        ),
+        field(
             "原样上屏（Enter）：短按松开时触发",
-            "按键固定为回车。关闭时按下触发；开启时短按松开触发，超过下方阈值不触发。注音模式仍为选词，原样上屏用 Shift + Enter。",
+            "回车将正在输入的拼音、编码或英文原样上屏，不选择候选。注音模式下回车上屏高亮候选，Shift + Enter 原样上屏注音。开启时短按松开触发，关闭时按下触发；超过阈值执行长按动作，长按关闭则不触发。",
             ToggleSwitch::new()
-                .is_on(s.enter_on_release)
+                .is_on(s.enter_release())
+                .is_enabled(!s.enter_hold.enabled())
                 .on_toggled(context.callback(Message::EnterOnRelease)),
         ),
         field(
-            "空格原功能（Space）：短按松开时触发",
-            "按键固定为空格，保留选词等现有功能。关闭时按下触发；开启时短按松开触发，超过下方阈值不触发。",
+            "候选上屏（Space）：短按松开时触发",
+            "空格上屏当前高亮候选；无候选时原样上屏，辅码筛选为空时保留输入。英文选词后保留空格，英文直输段原样上屏并加空格；注音待补声调时输入一声。开启时短按松开触发，关闭时按下触发；超过阈值执行长按动作，长按关闭则不触发。",
             ToggleSwitch::new()
-                .is_on(s.space_on_release)
+                .is_on(s.space_release())
+                .is_enabled(!s.space_hold.enabled())
                 .on_toggled(context.callback(Message::SpaceOnRelease)),
         ),
         field(
-            "短按时间阈值（毫秒）",
+            "短按 / 长按分界（毫秒）",
             "回车与空格共用，范围 100–2000 毫秒，默认 500。仅影响开启松开触发的按键。",
             NumberBox::new()
                 .minimum(100.0)

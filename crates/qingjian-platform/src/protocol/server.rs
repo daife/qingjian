@@ -17,13 +17,21 @@ pub struct InputSettings {
     /// 中英切换键（`[shortcut] switch_mode`）。
     pub switch_mode: SwitchKeys,
 
-    /// Windows：回车短按松开时才执行原功能，固定键不可重绑。
+    /// Windows：回车原样上屏（注音模式为选词）在短按松开时触发，固定键不可重绑。
     #[serde(default)]
     pub enter_on_release: bool,
 
-    /// Windows：空格短按松开时才执行原功能，固定键不可重绑。
+    /// Windows：空格选词（注音待补声调时输入一声）在短按松开时触发，固定键不可重绑。
     #[serde(default)]
     pub space_on_release: bool,
+
+    /// 是否启用固定回车的长按动作。
+    #[serde(default)]
+    pub enter_hold_enabled: bool,
+
+    /// 是否启用固定空格的长按动作。
+    #[serde(default)]
+    pub space_hold_enabled: bool,
 
     /// 短按的最长按住时间（毫秒），超过时松开不触发。
     #[serde(default = "default_short_press_ms")]
@@ -46,6 +54,8 @@ impl Default for InputSettings {
     fn default() -> Self {
         Self {
             switch_mode: SwitchKeys::default(),
+            enter_hold_enabled: false,
+            space_hold_enabled: false,
             enter_on_release: false,
             space_on_release: false,
             short_press_ms: default_short_press_ms(),

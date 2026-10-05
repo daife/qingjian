@@ -174,6 +174,20 @@ impl Component for Settings {
             Message::ModeQuestion(Some(i)) if i < shortcut::MODE_KEYS.len() => {
                 self.save("shortcut", "question", shortcut::MODE_KEYS[i]);
             }
+            Message::EnterHold(Some(i)) if i < qingjian_platform::CommitAction::ALL.len() => {
+                let action = qingjian_platform::CommitAction::ALL[i];
+                self.save("shortcut", "enter_hold", action.key());
+                if action.enabled() {
+                    self.save("shortcut", "enter_on_release", true);
+                }
+            }
+            Message::SpaceHold(Some(i)) if i < qingjian_platform::CommitAction::ALL.len() => {
+                let action = qingjian_platform::CommitAction::ALL[i];
+                self.save("shortcut", "space_hold", action.key());
+                if action.enabled() {
+                    self.save("shortcut", "space_on_release", true);
+                }
+            }
             Message::EnterOnRelease(on) => self.save("shortcut", "enter_on_release", on),
             Message::SpaceOnRelease(on) => self.save("shortcut", "space_on_release", on),
             Message::ShortPressMs(Some(value)) if value.is_finite() => {

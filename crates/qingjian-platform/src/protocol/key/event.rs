@@ -11,6 +11,10 @@ pub struct KeyEvent {
     /// 这次按键产生的字符（`ToUnicode` 的结果）；功能键没有字符时为 `None`。
     pub character: Option<char>,
 
+    /// 固定回车 / 空格超过阈值的长按，动作由 Server 配置决定。
+    #[serde(default)]
+    pub long_press: bool,
+
     /// 按下时的修饰键状态。
     pub modifiers: KeyModifiers,
 }
@@ -18,6 +22,7 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(virtual_key: u32, character: Option<char>, modifiers: KeyModifiers) -> Self {
         Self {
+            long_press: false,
             virtual_key,
             character,
             modifiers,

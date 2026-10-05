@@ -1,7 +1,7 @@
 use qingjian_platform::protocol::KeyModifiers;
 use qingjian_platform::{
-    AppsConfig, CandidateRenderer, Config, KeyCombo, LayoutMode, PreeditMode, Scheme, SwitchKeys,
-    ThemeMode,
+    AppsConfig, CandidateRenderer, CommitAction, Config, KeyCombo, LayoutMode, PreeditMode, Scheme,
+    SwitchKeys, ThemeMode,
 };
 
 use super::RenderSettings;
@@ -49,6 +49,11 @@ pub struct RouterConfig {
 
     /// Windows：空格短按松开时才执行原功能，固定键不可重绑。
     pub space_on_release: bool,
+
+    /// 固定回车 / 空格长按动作。
+    pub enter_hold: CommitAction,
+
+    pub space_hold: CommitAction,
 
     /// 短按的最长按住时间（毫秒），超过时松开不触发。
     pub short_press_ms: u64,
@@ -125,8 +130,10 @@ impl From<&Config> for RouterConfig {
             page_keys: config.general.page_keys(),
             english_candidates: config.general.english_candidates,
             english_mode: config.general.english_mode,
-            enter_on_release: config.shortcut.enter_on_release,
-            space_on_release: config.shortcut.space_on_release,
+            enter_on_release: config.shortcut.enter_release(),
+            space_on_release: config.shortcut.space_release(),
+            enter_hold: config.shortcut.enter_hold,
+            space_hold: config.shortcut.space_hold,
             short_press_ms: config.shortcut.short_press_ms.clamp(100, 2000),
             switch_mode: config.shortcut.switch_mode,
             full_width: config.general.full_width_punctuation,

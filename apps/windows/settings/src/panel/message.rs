@@ -56,6 +56,8 @@ pub(crate) enum Message {
     EnterOnRelease(bool),
     SpaceOnRelease(bool),
     ShortPressMs(Option<f64>),
+    EnterHold(Option<usize>),
+    SpaceHold(Option<usize>),
     Translation(Option<usize>),
     TranslationSecond(Option<usize>),
     DeleteCandidate(Option<usize>),

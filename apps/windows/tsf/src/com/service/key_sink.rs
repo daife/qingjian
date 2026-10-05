@@ -75,9 +75,17 @@ impl ITfKeyEventSink_Impl for TextService_Impl {
         if !self.release_keys.held(vk) {
             return Ok(FALSE);
         }
-        let threshold = self.input_settings.get().unwrap_or_default().short_press_ms;
+        let input = self.input_settings.get().unwrap_or_default();
+        let long_enabled = !self.shared.translating()
+            && match vk {
+                0x0d => input.enter_hold_enabled,
+                0x20 => input.space_hold_enabled,
+                _ => false,
+            };
         if let Ok(context) = pic.ok() {
-            if let Some(event) = self.release_keys.finish(vk, context, threshold)
+            if let Some(event) =
+                self.release_keys
+                    .finish(vk, context, input.short_press_ms, long_enabled)
                 && (self.shared.composing() || self.shared.translating())
                 && !self.keyboard_disabled(&pic)
             {
@@ -135,8 +143,8 @@ impl TextService_Impl {
         !event.modifiers.has_command_key()
             && (self.shared.composing() || self.shared.translating())
             && match event.virtual_key {
-                0x0d => input.enter_on_release,
-                0x20 => input.space_on_release,
+                0x0d => input.enter_on_release || input.enter_hold_enabled,
+                0x20 => input.space_on_release || input.space_hold_enabled,
                 _ => false,
             }
     }

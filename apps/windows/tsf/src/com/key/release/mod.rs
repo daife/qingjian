@@ -71,8 +71,15 @@ impl ReleaseKeys {
         vk: u32,
         context: &ITfContext,
         threshold_ms: u64,
+        long_enabled: bool,
     ) -> Option<KeyEvent> {
-        self.finish_at(vk, Some(context), threshold_ms, Instant::now())
+        self.finish_at(
+            vk,
+            Some(context),
+            threshold_ms,
+            long_enabled,
+            Instant::now(),
+        )
     }
 
     fn finish_at(
@@ -80,17 +87,26 @@ impl ReleaseKeys {
         vk: u32,
         context: Option<&ITfContext>,
         threshold_ms: u64,
+        long_enabled: bool,
         now: Instant,
     ) -> Option<KeyEvent> {
         let press = self.pending.borrow_mut()[slot(vk)?].take()?;
-        (press.context.as_ref() == context
-            && short_press(
-                press.started,
-                now,
-                Duration::from_millis(threshold_ms),
-                press.cancelled,
-            ))
-        .then_some(press.event)
+        if press.cancelled || press.context.as_ref() != context {
+            return None;
+        }
+        let long_press = !short_press(
+            press.started,
+            now,
+            Duration::from_millis(threshold_ms),
+            false,
+        );
+        if long_press && !long_enabled {
+            return None;
+        }
+        Some(KeyEvent {
+            long_press,
+            ..press.event
+        })
     }
 
     pub(crate) fn discard(&self, vk: u32) {
@@ -117,17 +133,17 @@ mod tests {
         assert!(keys.held(0x20));
         assert!(keys.held(0x20)); // TestKeyUp 不取走状态
         assert!(
-            keys.finish_at(0x20, None, 500, start + Duration::from_millis(501))
+            keys.finish_at(0x20, None, 500, false, start + Duration::from_millis(501))
                 .is_none()
         );
         assert!(!keys.held(0x20));
         keys.begin_at(event(0x0d), None, false, start);
         assert!(
-            keys.finish_at(0x0d, None, 500, start + Duration::from_millis(100))
+            keys.finish_at(0x0d, None, 500, false, start + Duration::from_millis(100))
                 .is_some()
         );
         assert!(
-            keys.finish_at(0x0d, None, 500, start + Duration::from_millis(100))
+            keys.finish_at(0x0d, None, 500, false, start + Duration::from_millis(100))
                 .is_none()
         );
     }
@@ -140,14 +156,46 @@ mod tests {
             keys.begin_at(event(0x20), None, false, start);
             keys.note_down(other_key);
             assert!(keys.held(0x20));
-            assert!(keys.finish_at(0x20, None, 500, start).is_none());
+            assert!(keys.finish_at(0x20, None, 500, false, start).is_none());
         }
         keys.begin_at(event(0x0d), None, false, start);
         keys.cancel();
         assert!(keys.held(0x0d));
-        assert!(keys.finish_at(0x0d, None, 500, start).is_none());
+        assert!(keys.finish_at(0x0d, None, 500, false, start).is_none());
         keys.begin_at(event(0x20), None, true, start);
-        assert!(keys.finish_at(0x20, None, 500, start).is_none());
+        assert!(keys.finish_at(0x20, None, 500, false, start).is_none());
+    }
+
+    #[test]
+    fn long_press_is_exclusive_and_preserves_the_original_event() {
+        let keys = ReleaseKeys::default();
+        let start = Instant::now();
+        for vk in [0x0d, 0x20] {
+            keys.begin_at(event(vk), None, false, start);
+            let result = keys
+                .finish_at(vk, None, 500, true, start + Duration::from_millis(501))
+                .unwrap();
+            assert!(result.long_press);
+            assert_eq!(result.virtual_key, vk);
+            assert!(!keys.held(vk));
+            assert!(
+                keys.finish_at(vk, None, 500, true, start + Duration::from_millis(600))
+                    .is_none()
+            );
+            keys.begin_at(event(vk), None, false, start);
+            assert!(
+                !keys
+                    .finish_at(vk, None, 500, true, start + Duration::from_millis(500))
+                    .unwrap()
+                    .long_press
+            );
+            keys.begin_at(event(vk), None, false, start);
+            keys.cancel();
+            assert!(
+                keys.finish_at(vk, None, 500, true, start + Duration::from_millis(600))
+                    .is_none()
+            );
+        }
     }
 
     #[test]
