@@ -46,6 +46,21 @@ impl Engine {
             } else {
                 self.modes().expression
             };
+        // 嗯 的标准音 ng 不是拼音音节（音节表不收叹词写法）；整段正好是 ng 时按快捷候选给它，排第一。
+        // 只认全拼：双拼与注音里这两个键是别的音
+        if scope == "ng" && self.shuangpin.is_none() && !self.zhuyin {
+            items.insert(
+                0,
+                Candidate {
+                    text: "嗯".to_owned(),
+                    kind: CandidateKind::Shortcut,
+                    syllables: Vec::new(),
+                    reading: None,
+                    translation: None,
+                    aux_code: None,
+                },
+            );
+        }
         let shortcuts = shortcut::candidates(scope, expression_char, &jiff::Zoned::now());
         if shortcuts.is_empty() {
             return;
