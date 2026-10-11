@@ -43,8 +43,24 @@ cargo run -p qingjian-cli -- <拼音>...          # Core 的主要验证方式�
 apps/macos/scripts/bundle.sh --install        # mac 壳装到 ~/Library/Input Methods/（IMK 不能 cargo run 验证）
 ```
 
-Windows 本机只 `cargo check --target x86_64-pc-windows-gnu`，真编译与真机测试在 Windows 机器上做（部署方式见 `apps/windows/README.md`）；
+macOS / Linux 上检查 Windows 壳才用 `cargo check --target x86_64-pc-windows-gnu`；Windows 本机按下面的原生流程构建。
 端到端验证 mac 可用 `osascript` 往 TextEdit 发按键再读回文本。
+
+### 本机 Windows 构建规范
+
+在仓库根目录用 PowerShell，使用 `rust-toolchain.toml` 固定的 Rust 与 `x86_64-pc-windows-msvc` host、已安装的 Visual Studio C++ 构建工具。
+日常统一执行这一条流程（Server、TSF DLL、设置程序一起构建）：
+
+```powershell
+$env:QINGJIAN_UIACCESS = '0'
+cargo build --locked -p qingjian-windows-server -p qingjian-windows-tsf -p qingjian-windows-settings
+```
+
+- 统一使用默认 `target\debug` 缓存；不要给原生 x64 构建加 `--target`，不要切换 GNU / 其他 Rust 版本、设置 `CARGO_TARGET_DIR` 或临时覆盖 `RUSTFLAGS`，避免重复编译同一套依赖。静态 CRT 已由 `.cargo/config.toml` 配置。
+- 日常保持 debug 增量构建，不在每次构建前 `cargo clean`。仅排查缓存问题或明确要求彻底清理时清空根 `target`；保留 `data\generated` 产品数据及用户级 Cargo 下载缓存。
+- 联调用 `pwsh -File apps\windows\scripts\test-local.ps1 -SkipBuild` 接上上述产物（前提是已有安装目录与五笔码表）；Server 与 DLL 必须成套更新，DLL 从联调目录注册，避免锁住 `target` 中的产物。部署细节见 `apps/windows/README.md`。
+- 只有需要安装包时才用 `pwsh -File apps\windows\installer\build.ps1`；该脚本统一构建 x64 release、额外的 i686 MSVC DLL 并打包，不另开一套手工打包流程。`-Sign` 仅用于本机签名测试。
+- Windows 壳测试沿用 `QINGJIAN_UIACCESS=0`，执行 `cargo test --locked -p qingjian-windows-server -p qingjian-windows-tsf -p qingjian-windows-settings`；不要在 Windows 直接构建包含 macOS 壳的整个 workspace。
 
 ## 约定
 
