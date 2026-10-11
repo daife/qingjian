@@ -28,8 +28,8 @@ use toml_edit::DocumentMut;
 use crate::error::ConfigError;
 
 pub use apps::{
-    AppsConfig, DEFAULT_ENGLISH_CANDIDATES_OFF, DEFAULT_ENGLISH_CANDIDATES_OFF_LINUX,
-    DEFAULT_ENGLISH_CANDIDATES_OFF_MACOS, DEFAULT_ENGLISH_CANDIDATES_OFF_WINDOWS,
+    AppsConfig, DEFAULT_ENGLISH_CANDIDATES_ON, DEFAULT_ENGLISH_CANDIDATES_ON_LINUX,
+    DEFAULT_ENGLISH_CANDIDATES_ON_MACOS, DEFAULT_ENGLISH_CANDIDATES_ON_WINDOWS,
 };
 pub use aux_code::AuxCodeConfig;
 pub use candidate_renderer::CandidateRenderer;
@@ -102,52 +102,57 @@ fn deserialize_phrases<'de, D: serde::Deserializer<'de>>(
 }
 
 /// 模板的 `[apps]` 一节（Linux）：应用按 fcitx5 认到的名字（X11 是 WM_CLASS，Wayland 是 app_id）。
-/// 名单要与 [`DEFAULT_ENGLISH_CANDIDATES_OFF`] 一致，测试 `template_parses_to_defaults` 会核对。
+/// 白名单要与 [`DEFAULT_ENGLISH_CANDIDATES_ON`] 一致，测试 `template_parses_to_defaults` 会核对。
 #[cfg(not(any(windows, target_os = "macos")))]
 macro_rules! template_apps {
     () => {
         r#"[apps]
 # 按应用改行为，条目是 fcitx5 认到的应用名（X11 是 WM_CLASS，Wayland 是 app_id；`*` 结尾按前缀匹配，不区分大小写）
-# 英文模式下不给候选的应用：终端与代码编辑器里候选窗口会挡住应用自己的补全，vim 里 Tab 和方向键也另有含义。设成 [] 就处处都给
-english_candidates_off = [
-  "konsole", "org.kde.konsole", "yakuake", "gnome-terminal-server", "org.gnome.terminal", "xterm",
-  "alacritty", "kitty", "foot", "wezterm", "org.wezfurlong.wezterm", "com.mitchellh.ghostty", "tilix", "xfce4-terminal",
-  "code", "code-oss", "codium", "code-url-handler", "cursor", "jetbrains-*", "dev.zed.zed", "sublime_text", "neovide",
+# 英文模式下给候选的应用（白名单）：浏览器、聊天、办公与笔记这类写成段文字的地方。没列的应用里英文字母原样交给应用，
+# 免得挡住终端 / 编辑器自己的补全，或吞掉设计、3D 软件的单键快捷键。写成 ["*"] 就处处都给，再用 english_candidates_off 排除个别应用
+english_candidates_on = [
+  "firefox", "org.mozilla.firefox", "google-chrome", "chromium", "chromium-browser", "microsoft-edge", "brave-browser",
+  "thunderbird", "org.mozilla.thunderbird", "libreoffice*", "soffice", "wps", "wpp",
+  "gedit", "org.gnome.gedit", "org.gnome.TextEditor", "kate", "org.kde.kate", "kwrite", "mousepad",
+  "wechat", "telegram-desktop", "org.telegram.desktop", "discord", "slack", "obsidian", "typora",
 ]
 "#
     };
 }
 
-/// 模板的 `[apps]` 一节（macOS）：应用按 bundle identifier 认。名单要与 [`DEFAULT_ENGLISH_CANDIDATES_OFF`] 一致，
+/// 模板的 `[apps]` 一节（macOS）：应用按 bundle identifier 认。白名单要与 [`DEFAULT_ENGLISH_CANDIDATES_ON`] 一致，
 /// 测试 `template_parses_to_defaults` 会核对。用宏而不是常量，是因为 `concat!` 只收字面量。
 #[cfg(target_os = "macos")]
 macro_rules! template_apps {
     () => {
         r#"[apps]
 # 按应用改行为，条目是 bundle identifier（`*` 结尾按前缀匹配）。开着「详细日志」时切到一个应用会把它的 bundle identifier 记进日志
-# 英文模式（Caps Lock）下不给候选的应用：终端与代码编辑器里候选窗口会挡住应用自己的补全，vim 里 Tab 和方向键也另有含义。设成 [] 就处处都给
-english_candidates_off = [
-  "com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.mitchellh.ghostty", "io.alacritty", "net.kovidgoyal.kitty",
-  "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92", "dev.zed.Zed", "com.jetbrains.*", "org.vim.MacVim", "com.sublimetext.*",
-  "com.apple.dt.Xcode", "com.neovide.neovide",
+# 英文模式（Caps Lock）下给候选的应用（白名单）：浏览器、聊天、办公与笔记这类写成段文字的地方。没列的应用里英文字母原样交给应用，
+# 免得挡住终端 / 编辑器自己的补全，或吞掉设计、3D 软件的单键快捷键。写成 ["*"] 就处处都给，再用 english_candidates_off 排除个别应用
+english_candidates_on = [
+  "com.apple.Safari", "com.google.Chrome*", "org.mozilla.firefox", "com.microsoft.edgemac*", "company.thebrowser.Browser", "com.brave.Browser*",
+  "com.apple.TextEdit", "com.apple.Notes", "com.apple.mail", "com.apple.MobileSMS", "com.apple.iWork.Pages", "com.apple.iWork.Keynote",
+  "com.microsoft.Word", "com.microsoft.Powerpoint", "com.microsoft.Outlook", "com.microsoft.onenote.mac", "com.microsoft.teams2", "com.kingsoft.wpsoffice.mac",
+  "com.tencent.xinWeChat", "com.tencent.qq", "com.tencent.WeWorkMac", "com.alibaba.DingTalkMac", "com.electron.lark",
+  "ru.keepcoder.Telegram", "com.tdesktop.Telegram", "com.hnc.Discord", "com.tinyspeck.slackmacgap", "md.obsidian", "notion.id", "abnerworks.Typora",
 ]
 "#
     };
 }
 
-/// 模板的 `[apps]` 一节（Windows）：应用按宿主进程的 exe 文件名认。名单要与 [`DEFAULT_ENGLISH_CANDIDATES_OFF`] 一致。
+/// 模板的 `[apps]` 一节（Windows）：应用按宿主进程的 exe 文件名认。白名单要与 [`DEFAULT_ENGLISH_CANDIDATES_ON`] 一致。
 #[cfg(windows)]
 macro_rules! template_apps {
     () => {
         r#"[apps]
 # 按应用改行为，条目是应用进程的 exe 文件名（`*` 结尾按前缀匹配）。Server 开着 debug 日志时每开一个会话会把 exe 名记进日志
-# 英文模式（Caps Lock）下不给候选的应用：终端与代码编辑器里候选窗口会挡住应用自己的补全，vim 里 Tab 和方向键也另有含义。设成 [] 就处处都给
-# 经典控制台（cmd / PowerShell）的窗口属于 conhost.exe，Windows Terminal 是 WindowsTerminal.exe
-english_candidates_off = [
-  "conhost.exe", "WindowsTerminal.exe", "alacritty.exe", "wezterm-gui.exe", "mintty.exe",
-  "Code.exe", "Code - Insiders.exe", "Cursor.exe", "zed.exe",
-  "idea64.exe", "pycharm64.exe", "clion64.exe", "rustrover64.exe", "goland64.exe", "rider64.exe", "webstorm64.exe", "phpstorm64.exe", "datagrip64.exe",
-  "devenv.exe", "sublime_text.exe", "notepad++.exe", "gvim.exe", "neovide.exe",
+# 英文模式下给候选的应用（白名单）：浏览器、聊天、办公与笔记这类写成段文字的地方。没列的应用里英文字母原样交给应用，
+# 免得挡住终端 / 编辑器自己的补全，或吞掉 Photoshop 这类软件的单键快捷键（W / H / V）。写成 ["*"] 就处处都给，再用 english_candidates_off 排除个别应用
+english_candidates_on = [
+  "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe", "notepad.exe",
+  "WINWORD.EXE", "POWERPNT.EXE", "OUTLOOK.EXE", "ONENOTE.EXE", "ms-teams.exe", "wps.exe", "wpp.exe",
+  "Weixin.exe", "WeChat.exe", "QQ.exe", "WXWork.exe", "DingTalk.exe", "Feishu.exe", "Lark.exe",
+  "Telegram.exe", "Discord.exe", "slack.exe", "thunderbird.exe", "Obsidian.exe", "Notion.exe", "Typora.exe",
 ]
 "#
     };
@@ -254,6 +259,9 @@ english_mode = true
 full_width_punctuation = true
 # 英文模式下的同一件事，中英各记一份，状态条切的是当前模式那份；只有 Windows 用
 english_full_width_punctuation = false
+# 组句中敲会转全角的标点（, . ? ! 等，翻页键除外）先把高亮候选上屏、再补该标点（nihao, 一气打完「你好，」）；
+# 缺省 false：标点进英文直输段，与以前一致
+punct_commits = false
 # 辅码触发键：拼音打完之后敲它进辅码态，之后敲的字母按码表缩小候选范围；缺省是分号
 # 单个可见字符，字母、数字与翻页键不能当触发键；微软 / 搜狗双拼里分号先当 ing 的韵母键
 aux_code_key = ";"

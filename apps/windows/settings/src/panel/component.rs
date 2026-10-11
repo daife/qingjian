@@ -1,7 +1,7 @@
 //! 根组件的 Reactor 生命周期：建状态、按消息落盘、画左侧导航 + 当前页。
 
 use qingjian_platform::{
-    CandidateRenderer, Config, DEFAULT_ENGLISH_CANDIDATES_OFF_WINDOWS, LayoutMode, LogLevel,
+    CandidateRenderer, Config, DEFAULT_ENGLISH_CANDIDATES_ON_WINDOWS, LayoutMode, LogLevel,
     PreeditMode, ShiftLetter, ThemeMode, UpdateChannel,
 };
 use windows_reactor::{
@@ -81,16 +81,19 @@ impl Component for Settings {
             Message::EnglishFullWidthPunctuation(on) => {
                 self.save("general", "english_full_width_punctuation", on);
             }
-            Message::EnglishOffInApps(on) => {
+            Message::PunctCommits(on) => {
+                self.save("general", "punct_commits", on);
+            }
+            Message::EnglishOnlyInApps(on) => {
                 let list: Vec<String> = if on {
-                    DEFAULT_ENGLISH_CANDIDATES_OFF_WINDOWS
+                    DEFAULT_ENGLISH_CANDIDATES_ON_WINDOWS
                         .iter()
                         .map(|s| (*s).to_owned())
                         .collect()
                 } else {
-                    Vec::new()
+                    vec!["*".to_owned()]
                 };
-                self.save_array("apps", "english_candidates_off", &list);
+                self.save_array("apps", "english_candidates_on", &list);
             }
             Message::SwitchKey(key, on) => {
                 let keys = self.config.shortcut.switch_mode.with(key, on);

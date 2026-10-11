@@ -98,3 +98,70 @@ fn english_without_candidates_keeps_passthrough_behavior() {
         KeyOutcome::Passthrough
     );
 }
+
+/// 中文标点上屏与英文句组标点独立；两个开关同时启用时分别走自己的模式。
+#[test]
+fn chinese_punctuation_commit_preserves_english_sentence_composition() {
+    let mut router = router(5);
+    router.config.punct_commits = true;
+    router.engine.set_english_composition(true, true, true);
+    let english = KeyModifiers {
+        english_mode: true,
+        ..Default::default()
+    };
+    compose(&mut router, "hello, world!", english);
+    assert_eq!(router.engine.composition().text(), "hello, world!");
+    assert_eq!(
+        key(&mut router, 9, None, english).1.as_deref(),
+        Some("hello, world!")
+    );
+    compose(&mut router, "ni", KeyModifiers::default());
+    assert_eq!(
+        key(&mut router, 188, Some(','), KeyModifiers::default())
+            .1
+            .as_deref(),
+        Some("你，")
+    );
+}
+
+/// 白名单外不启动英文句组；中文标点上屏不受应用名单影响。
+#[test]
+fn whitelist_blocks_english_composition_without_blocking_chinese_punctuation() {
+    let mut router = router(5);
+    router.config.punct_commits = true;
+    router.config.apps = qingjian_platform::AppsConfig::with_english_candidates_on(&[]);
+    router.engine.set_english_composition(true, true, true);
+    let english = KeyModifiers {
+        english_mode: true,
+        ..Default::default()
+    };
+    compose(&mut router, "hello, world!", english);
+    assert!(router.engine.composition().is_empty());
+    compose(&mut router, "ni", KeyModifiers::default());
+    assert_eq!(
+        key(&mut router, 188, Some(','), KeyModifiers::default())
+            .1
+            .as_deref(),
+        Some("你，")
+    );
+}
+
+/// 已有会话在名单变更后通过 SyncMode 收到新策略，不需要重开应用。
+#[test]
+fn english_whitelist_syncs_per_session_after_config_changes() {
+    use qingjian_platform::protocol::{ClientMessage, ServerMessage, SessionId};
+    let mut router = router(5);
+    fn enabled(router: &mut crate::dispatch::Router) -> bool {
+        match router.handle(ClientMessage::SyncMode {
+            session: SessionId(1),
+        }) {
+            Some(ServerMessage::ModeSync { input, .. }) => input.english_candidates,
+            other => panic!("expected mode sync: {other:?}"),
+        }
+    }
+    assert!(enabled(&mut router));
+    router.config.apps = qingjian_platform::AppsConfig::with_english_candidates_on(&[]);
+    assert!(!enabled(&mut router));
+    router.config.apps = qingjian_platform::AppsConfig::with_english_candidates_on(&["*"]);
+    assert!(enabled(&mut router));
+}

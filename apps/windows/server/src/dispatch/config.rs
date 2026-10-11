@@ -67,6 +67,10 @@ pub struct RouterConfig {
     /// 英文模式的那一份（`[general] english_full_width_punctuation`）。
     pub english_full_width: bool,
 
+    /// 组句中可转全角的标点先把高亮候选上屏再补标点（`[general] punct_commits`）；
+    /// 关掉恢复老行为：标点进英文直输段。缺省关。
+    pub punct_commits: bool,
+
     /// 大千注音（[general] zhuyin）。
     pub zhuyin: bool,
 
@@ -102,9 +106,9 @@ pub struct RouterConfig {
 }
 
 impl RouterConfig {
-    /// 全局开关开着，且应用不在 `[apps] english_candidates_off` 里；没报 exe 名按不关。
+    /// 全局开关开着，且应用在 `[apps] english_candidates_on` 白名单里；没报应用名按不给。
     pub fn english_candidates_in(&self, app: Option<&str>) -> bool {
-        self.english_candidates && !app.is_some_and(|app| self.apps.english_candidates_off(app))
+        self.english_candidates && self.apps.english_candidates_on(app)
     }
 
     /// 交给 UI 线程的画法。
@@ -138,6 +142,7 @@ impl From<&Config> for RouterConfig {
             switch_mode: config.shortcut.switch_mode,
             full_width: config.general.full_width_punctuation,
             english_full_width: config.general.english_full_width_punctuation,
+            punct_commits: config.general.punct_commits,
             zhuyin: config.general.is_zhuyin(),
             apps: config.apps.clone(),
             translation_keys: {

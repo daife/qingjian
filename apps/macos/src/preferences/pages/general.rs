@@ -40,8 +40,8 @@ pub struct GeneralPage {
 
     english_compose_punctuation: Retained<NSButton>,
 
-    /// 终端 / 编辑器里不给英文候选。
-    english_off_in_apps: Retained<NSButton>,
+    /// 只在浏览器、聊天和文档类应用里给英文候选。
+    english_only_in_apps: Retained<NSButton>,
 
     /// 中英混输时中文候选排在英文词前。
     chinese_first: Retained<NSButton>,
@@ -54,6 +54,9 @@ pub struct GeneralPage {
 
     /// 默认中文标点模式。
     punctuation: Retained<NSPopUpButton>,
+
+    /// 组句中会转全角的标点先把高亮候选上屏再补标点。
+    punct_commits: Retained<NSButton>,
 }
 
 impl GeneralPage {
@@ -138,6 +141,13 @@ impl GeneralPage {
             mtm,
             "仅影响标点，字母和数字保持半角；自定义短语原样输出。设置会保存。 ",
         );
+        let punct_commits = checkbox(mtm, "组句中标点先上屏候选", Setting::PunctCommits, target);
+        row_checkbox(layout, &punct_commits);
+        note(
+            layout,
+            mtm,
+            "打拼音时敲 , . ? ! 等先把高亮候选上屏、再补该标点（nihao, 一气打完「你好，」）；不勾恢复老行为：标点进英文直输段。",
+        );
         let traditional = checkbox(mtm, "繁体输出", Setting::Traditional, target);
         row_checkbox(layout, &traditional);
         let english = checkbox(
@@ -152,17 +162,17 @@ impl GeneralPage {
             mtm,
             "Tab 或方向键选词；空格、回车、标点仍原样上屏敲的字母，不选词时与直接打字一样。",
         );
-        let english_off_in_apps = checkbox(
+        let english_only_in_apps = checkbox(
             mtm,
-            "但在终端和代码编辑器里不给",
-            Setting::EnglishCandidatesOffInApps,
+            "只在浏览器、聊天和文档类应用里给",
+            Setting::EnglishCandidatesOnlyInApps,
             target,
         );
-        row_checkbox(layout, &english_off_in_apps);
+        row_checkbox(layout, &english_only_in_apps);
         note(
             layout,
             mtm,
-            "终端、iTerm、Warp、Ghostty、VS Code、Cursor、Zed、JetBrains、Xcode 等，那里的候选窗口会挡住应用自己的补全；名单可在配置文件里改。",
+            "Safari、Chrome、微信、QQ、Word、备忘录等；别的应用（终端、代码编辑器、Photoshop 这类靠单键快捷键的软件）里字母原样交给应用。名单可在配置文件里改。",
         );
         note(
             layout,
@@ -217,11 +227,12 @@ impl GeneralPage {
             english_compose_space,
             english_compose_enter,
             english_compose_punctuation,
-            english_off_in_apps,
+            english_only_in_apps,
             chinese_first,
             shift_letter,
             languages: languages.to_vec(),
             punctuation,
+            punct_commits,
         }
     }
 
@@ -231,6 +242,7 @@ impl GeneralPage {
             &self.punctuation,
             Some(usize::from(!general.full_width_punctuation)),
         );
+        set_checked(&self.punct_commits, general.punct_commits);
         select(
             &self.learning_language,
             if general.learning_language_off() {
@@ -270,10 +282,10 @@ impl GeneralPage {
         self.english_compose_punctuation
             .setEnabled(general.english_candidates);
         set_checked(
-            &self.english_off_in_apps,
-            config.apps.has_english_candidates_off(),
+            &self.english_only_in_apps,
+            !config.apps.english_candidates_everywhere(),
         );
-        self.english_off_in_apps
+        self.english_only_in_apps
             .setEnabled(general.english_candidates);
         set_checked(&self.chinese_first, general.chinese_first);
         set_checked(&self.shift_letter, general.shift_letter.compose());

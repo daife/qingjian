@@ -28,6 +28,7 @@ pub(super) fn router(size: usize) -> Router {
         engine,
         RouterConfig {
             page_size: size,
+            apps: qingjian_platform::AppsConfig::with_english_candidates_on(&["*"]),
             ..Default::default()
         },
     );

@@ -81,6 +81,10 @@ pub struct GeneralConfig {
     /// 英文模式下的同一件事，中英各记一份；缺省半角。只有 Windows 用（macOS 英文模式一律半角）。
     pub english_full_width_punctuation: bool,
 
+    /// 组句中敲会转全角的标点（`,` `.` `?` `!` 等，翻页键除外）先把高亮候选上屏、再补该标点
+    ///（`nihao,` 一气打完「你好，」）。缺省关：标点进英文直输段整段原样上屏，与以前一致。
+    pub punct_commits: bool,
+
     /// 辅码触发键：拼音打完之后敲它进辅码态，缺省 `;`。校验 = 单字符、ASCII 可打印、
     /// 非字母数字、非翻页键（见 [`qingjian_core::is_valid_aux_code_key`]）。
     pub aux_code_key: String,
@@ -147,6 +151,7 @@ impl Default for GeneralConfig {
             english_mode: true,
             full_width_punctuation: true,
             english_full_width_punctuation: false,
+            punct_commits: false,
             aux_code_key: qingjian_core::DEFAULT_AUX_CODE_KEY.to_string(),
             aux_code_show: false,
             aux_code_keep_empty: true,
@@ -338,6 +343,14 @@ mod tests {
         assert_eq!(general.page_keys(), ('[', ']'));
         general.page_keys = ",,".to_owned();
         assert_eq!(general.page_keys(), ('[', ']'));
+    }
+
+    /// 组句中标点先上屏候选缺省关（`[general] punct_commits`），保持标点进英文直输段的老行为。
+    #[test]
+    fn punct_commits_defaults_off() {
+        assert!(!GeneralConfig::default().punct_commits);
+        let general: GeneralConfig = toml::from_str("punct_commits = true\n").unwrap();
+        assert!(general.punct_commits);
     }
 
     #[test]

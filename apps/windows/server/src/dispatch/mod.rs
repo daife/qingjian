@@ -154,8 +154,12 @@ impl Router {
     }
 
     /// 下发给 DLL 的按键行为设置：`OpenSession` 的回包带一次，之后每拍 `SyncMode` 也跟着走，
-    /// 所以 DLL 不用自己读配置文件，配置改了也不用重开会话。
-    pub(super) fn input_settings(&self) -> InputSettings {
+    /// 所以 DLL 不用自己读配置文件，配置改了也不用重开会话。英文候选按这个会话的应用算。
+    pub(super) fn input_settings(&self, session: SessionId) -> InputSettings {
+        let app = self
+            .sessions
+            .get(&session)
+            .and_then(|info| info.app.as_deref());
         InputSettings {
             enter_hold_enabled: self.config.enter_hold.enabled(),
             space_hold_enabled: self.config.space_hold.enabled(),
@@ -165,6 +169,7 @@ impl Router {
             switch_mode: self.config.switch_mode,
             english_mode: self.config.english_mode,
             shift_letter_compose: self.config.shift_letter_compose,
+            english_candidates: self.config.english_candidates_in(app),
         }
     }
 
