@@ -221,3 +221,17 @@ fn punct_commits_off_keeps_punctuation_in_raw_segment() {
         Some("你，")
     );
 }
+
+#[test]
+fn learning_attention_preserves_candidate_order_and_space_commit() {
+    let normal = KeyModifiers::default();
+    let mut router = router(5);
+    compose(&mut router, "qq", normal);
+    let before = router.current_frame();
+    router.config.learning_attention = true;
+    assert_eq!(router.current_frame(), before);
+    assert_eq!(
+        key(&mut router, 0x20, Some(' '), normal).1,
+        Some(before.candidates.items[0].text.clone())
+    );
+}

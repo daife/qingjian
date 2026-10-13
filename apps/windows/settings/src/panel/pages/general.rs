@@ -1,7 +1,10 @@
 //! 「通用」页：学习语言、每页候选数、输入方案、英文模式候选。
 
 use qingjian_platform::{MAX_PAGE_SIZE, Scheme, ShiftLetter, SwitchKey};
-use windows_reactor::*;
+use windows_reactor::{
+    Callback, CheckBox, ChildrenControl, ComboBox, ContentControl, NumberBox, Orientation,
+    StackPanel, ToggleSwitch, View, ViewContext,
+};
 
 use crate::panel::controls::{feedback, field, index_of, page};
 use crate::panel::{Message, Settings};
@@ -60,6 +63,13 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
                 &g.learning_language,
                 context.callback(Message::LearningLanguage),
             ),
+        ),
+        field(
+            "中文输入强制学习注意力模式",
+            "随机对调中文候选与译文的显示位置，提醒关注译词。只改变显示位置，候选顺序与上屏按键不变，通常短按空格仍上屏中文；没有译文时不对调。",
+            ToggleSwitch::new()
+                .is_on(g.learning_attention)
+                .on_toggled(context.callback(Message::LearningAttention)),
         ),
         field(
             "每页候选数",

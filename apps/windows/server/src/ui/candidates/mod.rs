@@ -113,6 +113,10 @@ impl CandidateWindow {
         })
     }
 
+    pub(crate) fn set_learning_attention(&self, enabled: bool) {
+        self.data.borrow_mut().learning_attention = enabled;
+    }
+
     /// 刷新内容（不定位、不显示）。
     pub(crate) fn set_content(&self, frame: &Frame) {
         self.data.borrow_mut().set(frame);
@@ -185,6 +189,7 @@ impl CandidateWindow {
     }
 
     pub(crate) fn hide(&self) {
+        self.data.borrow_mut().reset_attention();
         let _ = unsafe { ShowWindow(self.hwnd, SW_HIDE) };
     }
 

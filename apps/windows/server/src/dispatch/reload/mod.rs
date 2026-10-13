@@ -237,6 +237,7 @@ impl Router {
         let settings = self.config.render_settings();
         if settings != previous {
             self.candidates.configure(settings);
+            self.last_shown = None;
         }
         self.reconcile_status();
         self.apply_model_config(&config.model);

@@ -25,6 +25,9 @@ pub struct GeneralConfig {
     /// 学习语言（ISO 639-1，`en` / `ja` / `es`；`off` 不显示译文）：候选旁显示哪种语言的译文。要有对应的释义表文件才生效。
     pub learning_language: String,
 
+    /// 中文候选与译文随机对调显示位置，仅 Windows 使用，不改变上屏行为。
+    pub learning_attention: bool,
+
     /// 每页候选数，1–9。
     pub page_size: usize,
 
@@ -133,6 +136,7 @@ impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
             learning_language: "en".to_owned(),
+            learning_attention: false,
             page_size: MAX_PAGE_SIZE,
             page_keys: PAGE_KEY_OPTIONS[0].to_owned(),
             theme: ThemeMode::default(),
@@ -301,6 +305,19 @@ mod tests {
             toml::from_str::<GeneralConfig>(&saved).unwrap().page_keys(),
             ('\0', '\0')
         );
+    }
+
+    #[test]
+    fn learning_attention_defaults_off_and_round_trips() {
+        assert!(
+            !toml::from_str::<GeneralConfig>("")
+                .unwrap()
+                .learning_attention
+        );
+        let configured: GeneralConfig = toml::from_str("learning_attention = true\n").unwrap();
+        assert!(configured.learning_attention);
+        let saved = toml::to_string(&configured).unwrap();
+        assert_eq!(toml::from_str::<GeneralConfig>(&saved).unwrap(), configured);
     }
 
     #[test]

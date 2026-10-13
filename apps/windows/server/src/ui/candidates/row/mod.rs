@@ -45,3 +45,34 @@ pub(crate) fn from_candidate(position: usize, candidate: &Candidate, show_code: 
         cloud: candidate.kind == CandidateKind::Cloud,
     }
 }
+
+/// 只调整绘制用的一行；候选原文、释义顺序与上屏数据不变。
+pub(crate) fn for_display(
+    position: usize,
+    candidate: &Candidate,
+    show_code: bool,
+    swap: bool,
+) -> Row {
+    let mut row = from_candidate(position, candidate, show_code);
+    let chinese = candidate.text.chars().any(|c| {
+        matches!(c, '\u{3400}'..='\u{4dbf}' | '\u{4e00}'..='\u{9fff}' | '\u{f900}'..='\u{faff}' | '\u{20000}'..='\u{323af}')
+    });
+    let has_translation = candidate.translation.as_ref().is_some_and(|translation| {
+        translation
+            .senses()
+            .iter()
+            .any(|sense| !sense.text.trim().is_empty())
+    });
+    if swap && chinese && has_translation {
+        let translation = row
+            .annotation
+            .iter()
+            .map(|(text, _)| text.as_str())
+            .collect();
+        row.annotation = vec![(std::mem::replace(&mut row.text, translation), Tone::Gloss)];
+    }
+    row
+}
+
+#[cfg(test)]
+mod tests;

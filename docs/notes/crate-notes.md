@@ -376,3 +376,5 @@ Windows Poll 经协议 `Update.commit` 回到 TSF 的当前编辑上下文；v7 
 ### 英文句组按键
 
 `[general] english_compose_space` / `english_compose_enter` / `english_compose_punctuation` 缺省 false，Windows 与 macOS 通用页提供独立勾选框。三端装配配置时调用 `Engine::set_english_composition`，按键收录判定统一由 `english_composes` 提供，仅英文候选模式生效。回车收录为换行，标点开关优先于符号翻页键（包括下划线、连字符、撇号）；关闭时标点直接上屏。Tab 仍可上屏，无候选时取整个原始缓冲区；Windows 长按动作保持独立。
+
+Windows 通用页的 `[general] learning_attention` 缺省 false，通过 `RenderSettings` 热更新到候选窗口；`RenderData` 使用每轮独立的 `RandomState` 按输入与候选文本抽取显示方向，隐藏时重置种子，高亮、翻页、异步注释与重绘保持方向稳定。`ui/candidates/row.rs::for_display` 只对有非空译文的中文候选交换绘制行的 text / annotation，两套渲染共用，不修改 Frame、Core 候选或上屏数据。

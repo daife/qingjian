@@ -11,6 +11,9 @@ pub struct RenderSettings {
 
     /// 字族名（`[general] font`），空为系统字体。
     pub font: String,
+
+    /// 中文候选与译文随机对调显示位置。
+    pub learning_attention: bool,
 }
 
 /// Router 只产出帧，画交给它；Windows 上由 UI 线程实现。

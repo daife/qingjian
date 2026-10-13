@@ -1,5 +1,7 @@
 //! 候选窗口一次绘制要用的全部内容，由帧换算而来；渲染器要的帧由 [`RenderData::render_frame`] 再换一次。
 
+use std::collections::hash_map::RandomState;
+use std::hash::BuildHasher;
 use std::rc::Rc;
 
 use qingjian_platform::protocol::{Frame, PreeditKind};
@@ -43,6 +45,11 @@ pub(crate) struct RenderData {
 
     /// 候选上是否显示辅码（随帧下发的 `[general] aux_code_show`）。
     pub(super) show_code: bool,
+
+    pub(super) learning_attention: bool,
+
+    /// 每轮输入使用独立随机种子；同一候选的异步注释、高亮与位置刷新不能重新抽签。
+    attention_random: RandomState,
 }
 
 impl RenderData {
@@ -59,10 +66,21 @@ impl RenderData {
             layout: LayoutMode::default(),
             theme_mode: ThemeMode::default(),
             show_code: false,
+            learning_attention: false,
+            attention_random: RandomState::new(),
         }
     }
 
+    pub(super) fn reset_attention(&mut self) {
+        self.attention_random = RandomState::new();
+    }
+
     pub(super) fn set(&mut self, frame: &Frame) {
+        let input: String = frame
+            .preedit
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect();
         self.layout = frame.layout;
         self.theme_mode = frame.theme;
         self.show_code = frame.aux_code_show;
@@ -73,7 +91,11 @@ impl RenderData {
             .items
             .iter()
             .enumerate()
-            .map(|(i, candidate)| row::from_candidate(i, candidate, self.show_code))
+            .map(|(i, candidate)| {
+                let swap = self.learning_attention
+                    && self.attention_random.hash_one((&input, &candidate.text)) & 1 == 1;
+                row::for_display(i, candidate, self.show_code, swap)
+            })
             .collect();
         self.highlight = frame.highlight;
         self.footer =

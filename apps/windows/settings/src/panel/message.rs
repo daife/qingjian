@@ -8,6 +8,7 @@ pub(crate) enum Message {
 
     // 通用页
     LearningLanguage(Option<usize>),
+    LearningAttention(bool),
     PageSize(Option<f64>),
     Scheme(Option<usize>),
     ShuangpinRawPreedit(bool),

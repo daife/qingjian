@@ -219,6 +219,8 @@ pub const TEMPLATE: &str = concat!(
 [general]
 # 学习语言（en 英语 / ja 日语 / es 西班牙语 / off 不显示译文）：候选旁显示哪种语言的译文，要有对应的释义表才生效
 learning_language = "en"
+# 中文输入强制学习注意力模式（仅 Windows）：随机对调中文候选与译文的显示位置，不改变上屏行为
+learning_attention = false
 # 每页候选数（1–9）
 page_size = 9
 # 翻页键对：前一个上一页、后一个下一页。可选 "[]" 或 ",."；选 ",." 的话组句中敲逗号句号是翻页而不是上屏加标点

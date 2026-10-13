@@ -31,6 +31,9 @@ pub struct RouterConfig {
     /// 候选窗口字体的字族名（`[general] font`），空为系统字体；只对青简渲染器生效。
     pub font: String,
 
+    /// 中文候选与译文随机对调显示位置。
+    pub learning_attention: bool,
+
     /// 拼音显示位置（`[general] preedit`）。
     pub preedit: PreeditMode,
 
@@ -116,6 +119,7 @@ impl RouterConfig {
         RenderSettings {
             renderer: self.renderer,
             font: self.font.clone(),
+            learning_attention: self.learning_attention,
         }
     }
 }
@@ -130,6 +134,7 @@ impl From<&Config> for RouterConfig {
             theme: config.general.theme,
             renderer: config.general.renderer,
             font: config.general.font.trim().to_owned(),
+            learning_attention: config.general.learning_attention,
             preedit: config.general.preedit,
             page_keys: config.general.page_keys(),
             english_candidates: config.general.english_candidates,
