@@ -62,7 +62,10 @@ fn private_vocabulary_book_stays_empty_for_selection_and_translation_shortcut() 
             Glossary::parse(qingjian_core::Language::English, "你好\thello\n").unwrap(),
         ))
         .with_vocabulary_tracker(Box::new(VocabularyBook::open(&vocabulary_path)));
-    let mut router = Router::new(engine, RouterConfig::default());
+    let config = RouterConfig::default();
+    // 共享配置在 Windows 上默认 Ctrl，在 Linux 上默认 Alt；测试沿用实际配置。
+    let translation_chord = config.translation_keys.0;
+    let mut router = Router::new(engine, config);
     open(&mut router, 1, true);
 
     type_text(&mut router, 1, "nihao");
@@ -73,32 +76,14 @@ fn private_vocabulary_book_stays_empty_for_selection_and_translation_shortcut() 
         Some("你好")
     );
     type_text(&mut router, 1, "nihao");
-    let shortcut = key(
-        &mut router,
-        1,
-        b'1' as u32,
-        Some('1'),
-        KeyModifiers {
-            alt: true,
-            ..KeyModifiers::default()
-        },
-    );
+    let shortcut = key(&mut router, 1, b'1' as u32, Some('1'), translation_chord);
     assert_eq!(shortcut.0.as_deref(), Some("hello"));
     router.flush_learning();
     assert!(!vocabulary_path.exists());
 
     open(&mut router, 2, false);
     type_text(&mut router, 2, "nihao");
-    let normal_shortcut = key(
-        &mut router,
-        2,
-        b'1' as u32,
-        Some('1'),
-        KeyModifiers {
-            alt: true,
-            ..KeyModifiers::default()
-        },
-    );
+    let normal_shortcut = key(&mut router, 2, b'1' as u32, Some('1'), translation_chord);
     assert_eq!(normal_shortcut.0.as_deref(), Some("hello"));
     router.flush_learning();
     let saved = std::fs::read_to_string(&vocabulary_path).unwrap();
