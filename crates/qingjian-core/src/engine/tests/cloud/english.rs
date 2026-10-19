@@ -64,7 +64,7 @@ fn english_cloud_words_learn_as_english_and_never_request_chinese_glosses() {
         fn learn_word(&mut self, _: &str, _: &[String]) {
             panic!("英文词不能记入拼音用户词");
         }
-        fn record_choice(&mut self, _: &str, _: &str) {
+        fn record_choice(&mut self, _: &str, _: &str, _: &str) {
             panic!("英文词不能记拼音选词");
         }
         fn forget_english(&mut self, text: &str) -> bool {

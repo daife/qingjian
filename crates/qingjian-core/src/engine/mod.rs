@@ -66,16 +66,14 @@ use crate::candidate::{Candidate, CandidateKind, CandidateList, Language};
 use crate::composition::Composition;
 use crate::correction::{self, Correction, TypoCosts, typo};
 use crate::emoji::EmojiTable;
-use crate::english;
 use crate::fuzzy::{Expanded, FuzzyRules};
 use crate::history::InputHistory;
 use crate::parser::{self, ParseError, Segmentation};
 use crate::punctuation::Punctuation;
 use crate::ranking::{self, Scored};
 use crate::sentence::{
-    self, Conversion, Interpolation, LanguageModel, NoLanguageModel, Personal, SentenceScorer,
+    self, Conversion, Interpolation, LanguageModel, NoLanguageModel, SentenceScorer,
 };
-use crate::shortcut;
 use crate::shuangpin::Scheme;
 
 use commit::CommitChain;
@@ -577,6 +575,12 @@ fn abbreviated_count(patterns: &[qingjian_dictionary::SyllablePattern<'_>]) -> u
         .skip(1)
         .filter(|p| !p.complete)
         .count()
+}
+
+/// 候选读音的学习键：音节无分隔符连起来（`kai fa` → `kaifa`）。
+/// 按输入串记选择时与字面键各记一份，换个打法也认账（见 [`Learner::record_choice`]）。
+fn reading_key<'a>(syllables: impl IntoIterator<Item = &'a str>) -> String {
+    syllables.into_iter().collect()
 }
 
 #[cfg(test)]

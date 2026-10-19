@@ -1,6 +1,12 @@
 //! 拼音以外的几种查询：表达式（`v`）、原样字母、英文模式、问字（`?`）。
 
-use super::*;
+use crate::candidate::{Candidate, CandidateKind, CandidateList};
+use crate::engine::ENGLISH_MODE_CANDIDATES;
+use crate::engine::Learner;
+use crate::engine::{Engine, Query, Timings};
+use crate::english;
+use crate::shortcut;
+use std::time::{Duration, Instant};
 
 impl Engine {
     /// 表达式模式（`v` 开头）：不解析拼音，候选是算式结果 / 中文数字，再加上整段是英文词的情况（`very`）。
@@ -12,15 +18,8 @@ impl Engine {
         start: Instant,
     ) -> Query {
         let mut items = shortcut::candidates(scope, self.modes().expression, &jiff::Zoned::now());
-        if let Some(word) = self.english.as_ref().and_then(|english| english.get(scope)) {
-            items.push(Candidate {
-                text: word.to_owned(),
-                kind: CandidateKind::English,
-                syllables: Vec::new(),
-                reading: None,
-                translation: None,
-                aux_code: None,
-            });
+        if let Some(candidate) = self.english_word_candidate(scope) {
+            items.push(candidate);
         }
         Query {
             segmentations: Vec::new(),
@@ -118,8 +117,8 @@ impl Engine {
         }
     }
 
-    /// 问字模式（问字键或 `?` 开头）：拼音问题本地没有候选，preedit 显示前缀加切分好的问题拼音，答案等云端；
-    /// 十六进制码点（`u4e00`、`u+1f600`）本地直接给出那个字符。
+    /// 问字模式（问字键或 `?` 开头）：十六进制码点（`u4e00`、`u+1f600`）本地直接给出那个字符；
+    /// 整段是英文词时（`unchanged`）给英文候选，否则本地没有候选，preedit 显示前缀加切分好的问题拼音，答案等云端。
     pub(in crate::engine) fn query_question(
         &self,
         scope: &str,
@@ -142,10 +141,19 @@ impl Engine {
                 },
                 scope.to_owned(),
             ),
-            None => (
-                CandidateList::default(),
-                format!("{prefix}{}", self.marked_rest(body)),
-            ),
+            None => match self.english_word_candidate(scope) {
+                // u 开头的英文词不当成问字问题：原样给词，空格可直接上屏
+                Some(candidate) => (
+                    CandidateList {
+                        items: vec![candidate],
+                    },
+                    scope.to_owned(),
+                ),
+                None => (
+                    CandidateList::default(),
+                    format!("{prefix}{}", self.marked_rest(body)),
+                ),
+            },
         };
         Query {
             segmentations: Vec::new(),
@@ -165,5 +173,23 @@ impl Engine {
                 rank: Duration::ZERO,
             },
         }
+    }
+
+    /// 整段输入在英文词表（用户词表优先、随包词表在后）精确命中时的候选。
+    /// 表达式（`very`）与问字（`unchanged`）两种前缀模式共用：前缀字母不拼拼音，整段是词就让用户直接上屏。
+    pub(in crate::engine) fn english_word_candidate(&self, scope: &str) -> Option<Candidate> {
+        let code = scope.to_ascii_lowercase();
+        let word = self
+            .english_lists()
+            .iter()
+            .find_map(|words| words.get(&code))?;
+        Some(Candidate {
+            text: word.to_owned(),
+            kind: CandidateKind::English,
+            syllables: Vec::new(),
+            reading: None,
+            translation: None,
+            aux_code: None,
+        })
     }
 }

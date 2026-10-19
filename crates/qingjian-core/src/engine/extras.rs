@@ -1,6 +1,13 @@
 //! 附加候选：日期时间等快捷项、中英混输的英文词与补全、emoji。
 
-use super::*;
+use crate::candidate::{Candidate, CandidateKind};
+use crate::engine::Engine;
+use crate::engine::Learner;
+use crate::engine::{
+    EMOJI_PER_WORD, EMOJI_SCAN, EMOJI_TOTAL, ENGLISH_COMPLETIONS, MIN_COMPLETION_LETTERS,
+};
+use crate::shortcut;
+use qingjian_dictionary::WordList;
 
 impl Engine {
     /// 精确匹配自定义输入码时，数字键应选择候选。
@@ -95,6 +102,8 @@ impl Engine {
         let word = lists.iter().find_map(|words| words.get(text));
         // 这段字母下用户选中文词（`key` → 可以）比选英文词的次数多：中文词留在第一，英文让到后面；
         // 拼音再不像话也是他自己教的
+        // 仲裁只看字面键：`wenti` 下选的 问题 不能隔着 `went` 把英文词顶下去，
+        // 打的正是这个英文时它得留在第一——同一段字母上选过中文的照旧算。
         let chosen = items
             .first()
             .filter(|c| c.kind == CandidateKind::Chinese)

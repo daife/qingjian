@@ -386,6 +386,54 @@ fn question_key_answers_code_points_locally_and_keeps_question_mark_alias() {
 }
 
 #[test]
+fn question_mode_falls_back_to_an_english_word_and_skips_the_cloud() {
+    let submitted = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+    let mut engine = engine()
+        .with_english(WordList::parse("unchanged\tunchanged\t500\n").unwrap())
+        .with_predictor(Box::new(EchoPredictor {
+            submitted: submitted.clone(),
+            replies: Vec::new(),
+            sentence: false,
+        }));
+    // u 开头的英文词：问字模式里本地给词，不当成问题发云端
+    engine.set_input("unchanged");
+    assert!(engine.question_mode());
+    let query = engine.query().unwrap();
+    assert_eq!(query.candidates.items.len(), 1);
+    assert_eq!(query.candidates.items[0].text, "unchanged");
+    assert_eq!(query.candidates.items[0].kind, CandidateKind::English);
+    assert_eq!(query.tail, "unchanged");
+    assert!(
+        engine
+            .request_prediction(None, &query.candidates.items)
+            .is_none()
+    );
+    assert!(submitted.borrow().is_empty());
+    assert_eq!(
+        engine.commit(&query.candidates.items[0].clone()),
+        "unchanged"
+    );
+    assert!(engine.composition().is_empty());
+
+    // 词表不命中仍是问字：本地零候选、问题发云端（序号在入口就递增，此时是 2）
+    engine.set_input("usangemu");
+    assert!(engine.question_mode());
+    let query = engine.query().unwrap();
+    assert!(query.candidates.items.is_empty());
+    assert_eq!(
+        engine.request_prediction(None, &query.candidates.items),
+        Some(2)
+    );
+    assert_eq!(submitted.borrow()[0].kind, PredictionKind::Question);
+
+    // 码点比英文词优先（词表里恰好有个「一」也不影响）
+    engine.set_input("u4e00");
+    let query = engine.query().unwrap();
+    assert_eq!(query.candidates.items[0].text, "一");
+    assert_eq!(query.candidates.items[0].kind, CandidateKind::Shortcut);
+}
+
+#[test]
 fn committing_a_cloud_word_learns_it_and_it_ranks_first_next_time() {
     let mut engine = engine().with_learner(Box::new(WordLearner::default()));
     engine.set_input("zt");

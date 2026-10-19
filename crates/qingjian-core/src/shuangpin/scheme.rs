@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use super::table::Table;
 use super::{Decoded, Unit, table};
+use crate::fuzzy::FuzzyRules;
 use crate::parser;
+use qingjian_dictionary::SyllablePattern;
 
 /// 双拼方案。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -128,13 +130,18 @@ impl Scheme {
             }
         }
         let initial = self.initial(first)?;
-        self.finals(second)
+        // jv / qv 这类全拼键盘别名也是合法音节，解码结果统一成词库写法
+        let valid: Vec<String> = self
+            .finals(second)
             .iter()
-            .find_map(|final_| {
-                // jv / qv 这类全拼键盘别名也是合法音节，解码结果统一成词库写法
-                let syllable = format!("{initial}{final_}");
-                parser::is_syllable(&syllable).then(|| canonical_syllable(&syllable).to_owned())
-            })
+            .map(|final_| format!("{initial}{final_}"))
+            .filter(|syllable| parser::is_syllable(syllable))
+            .collect();
+        valid
+            .iter()
+            .find(|syllable| !parser::RARE_SYLLABLES.contains(&syllable.as_str()))
+            .or(valid.first())
+            .map(|syllable| canonical_syllable(syllable).to_owned())
             .or_else(|| {
                 // ü 在 j / q / x / y 后写作 u；同键已有的合法音节仍优先。
                 (matches!(initial, "j" | "q" | "x" | "y") && self.finals(second).contains(&"v"))
@@ -143,7 +150,17 @@ impl Scheme {
     }
 
     /// 一个全拼音节的主写法（两个键）。测试与文档用；拆成声母 + 韵母后查表，零声母查零声母表。
+    ///
+    /// 入参接受全拼键盘别名（`jv`、`jve` 等）。先按原写法编码，保留首道等方案里
+    /// `lue`/`nue` 与 `lve`/`nve` 的故意分键；原写法查不到键位时（如 j/q/x/y 后的
+    /// `van`/`vn`，#531），再归一到主写法重试。
     pub fn encode(self, syllable: &str) -> Option<[char; 2]> {
+        self.encode_spelling(syllable)
+            .or_else(|| self.encode_spelling(canonical_syllable(syllable)))
+    }
+
+    /// 按给定拼写查两键编码，不做键盘别名归一。
+    fn encode_spelling(self, syllable: &str) -> Option<[char; 2]> {
         let table = self.table();
         if let Some((_, spellings)) = table.zero_initials.iter().find(|(s, _)| *s == syllable) {
             let mut chars = spellings[0].chars();
@@ -171,6 +188,12 @@ impl Scheme {
     /// 把敲的键翻成全拼。两键一组从左到右配对；配不出合法音节的位置起全部原样留作尾巴；
     /// 末尾落单的一键当声母（或元音）前缀；用户自己敲的 `'` 结束当前配对。
     pub fn decode(self, keys: &str) -> Decoded {
+        self.decode_fuzzy(keys, FuzzyRules::default())
+    }
+
+    /// 模糊音能补成合法音节时保留原读音，供查询展开与上屏消耗共用。
+    /// 普通解码优先，关闭模糊音时行为与 [`Self::decode`] 一致。
+    pub(crate) fn decode_fuzzy(self, keys: &str, fuzzy: FuzzyRules) -> Decoded {
         let chars: Vec<char> = keys.chars().collect();
         let mut units = Vec::with_capacity(chars.len() / 2 + 1);
         let mut index = 0;
@@ -183,11 +206,24 @@ impl Scheme {
             }
             let second = chars.get(index + 1).copied().filter(|c| *c != '\'');
             let unit = match second {
-                Some(second) => self.syllable(first, second).map(|pinyin| Unit {
-                    keys: [first, second].iter().collect(),
-                    pinyin,
-                    complete: true,
-                }),
+                Some(second) => self
+                    .syllable(first, second)
+                    .or_else(|| {
+                        if !fuzzy.any() {
+                            return None;
+                        }
+                        let initial = self.initial(first)?;
+                        self.finals(second).iter().find_map(|final_| {
+                            let raw = format!("{initial}{final_}");
+                            let expanded = fuzzy.expand(&[SyllablePattern::complete(&raw)]);
+                            expanded.has_alternatives().then_some(raw)
+                        })
+                    })
+                    .map(|pinyin| Unit {
+                        keys: [first, second].iter().collect(),
+                        pinyin,
+                        complete: true,
+                    }),
                 None => self.partial(first).map(|pinyin| Unit {
                     keys: first.to_string(),
                     pinyin,
@@ -268,10 +304,25 @@ mod tests {
                     "qv" => "qu",
                     "xv" => "xu",
                     "yv" => "yu",
+                    // j/q/x/y 后 v 代 ü 的韵母系列（#531），同样解到主写法
+                    "jve" => "jue",
+                    "qve" => "que",
+                    "xve" => "xue",
+                    "yve" => "yue",
+                    "jvan" => "juan",
+                    "qvan" => "quan",
+                    "xvan" => "xuan",
+                    "yvan" => "yuan",
+                    "jvn" => "jun",
+                    "qvn" => "qun",
+                    "xvn" => "xun",
+                    "yvn" => "yun",
                     "eng" if scheme == Scheme::Xiaolang => "en",
                     "dia" if scheme == Scheme::Xiaolang => "dai",
                     "lia" if scheme == Scheme::Xiaolang => "lai",
                     "nen" if scheme == Scheme::Xiaolang => "niang",
+                    // 生僻音节与常用音节同键时让给常用的
+                    "biang" if scheme == Scheme::Xiaolang => "ben",
                     other => other,
                 };
                 assert_eq!(decoded, expected, "{scheme}: {syllable} → {keys:?}");
@@ -430,10 +481,10 @@ mod tests {
 
     #[test]
     fn invalid_pair_starts_the_tail() {
-        let decoded = Scheme::Xiaohe.decode("nibl");
+        let decoded = Scheme::Xiaohe.decode("nifl");
         assert_eq!(decoded.pinyin(), "ni");
-        assert_eq!(decoded.tail(), "bl");
-        assert_eq!(decoded.marked(), "ni'bl");
+        assert_eq!(decoded.tail(), "fl");
+        assert_eq!(decoded.marked(), "ni'fl");
     }
 
     #[test]
