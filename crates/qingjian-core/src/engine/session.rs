@@ -80,6 +80,7 @@ impl Engine {
         std::mem::swap(&mut self.displayed, &mut session.displayed);
         std::mem::swap(&mut self.history, &mut session.history);
         std::mem::swap(&mut self.chain, &mut session.chain);
+        self.reset_prediction_history();
         self.forget_span_cache();
         *self.correction_cache.borrow_mut() = None;
         *self.last_query.borrow_mut() = None;
@@ -109,6 +110,7 @@ impl Engine {
     /// 在隐私边界丢弃当前装入的输入状态。与 [`Self::set_private`] 分开，避免平台壳
     /// 在组句第一帧后报告隐私状态时意外清掉新输入。
     pub fn discard_input(&mut self) {
+        self.reset_prediction_history();
         self.cancel_prediction();
         self.composition.clear();
         self.english_mode = false;

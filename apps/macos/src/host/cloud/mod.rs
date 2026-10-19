@@ -76,7 +76,7 @@ impl Host {
         self.sentence = None;
     }
 
-    /// 定时器回调：结果到了就画上去。云端词补进第一页末尾，整句挂在 preedit 右侧。
+    /// 定时器回调：结果到了就画上去。云端词补进当前页末尾，整句挂在 preedit 右侧。
     pub fn poll_prediction(&mut self) {
         let Some(prediction) = self.engine.poll_prediction() else {
             if self.monitor.expired() {
@@ -107,15 +107,14 @@ impl Host {
         if self.engine.composition().is_empty() {
             return;
         }
-        // 云端词补进第一页末尾（前面的本地候选不动），整句挂在 preedit 右侧；云端词没有译文，先补上。
-        // 用户已经翻到后面的页、或高亮已经移到会被挪走的那几格时不补：那几格正被他看着 / 要选
+        // 云端词补进当前页末尾（前面的本地候选不动），整句挂在 preedit 右侧；云端词没有译文，先补上。
+        // 高亮已经移到会被挪走的那几格时不补：那几格正被他看着 / 要选
         let layout = &self.session.layout;
         let untouched = cloud_slots_untouched(
-            self.session.page,
-            self.session.highlighted,
+            self.session.highlighted % layout.page_size(),
             layout.local().is_empty(),
             layout.page_size(),
-            layout.capacity(),
+            layout.capacity_on_page(self.session.page),
         );
         if untouched && !prediction.words.is_empty() {
             let mut words = qingjian_core::CandidateList {
@@ -126,7 +125,10 @@ impl Host {
                     .collect(),
             };
             self.engine.annotate(&mut words);
-            let filled = self.session.layout.set_cloud(words.items);
+            let filled = self
+                .session
+                .layout
+                .set_cloud_on_page(self.session.page, words.items);
             tracing::debug!(filled, "云端词已补进候选");
         }
         self.sentence = prediction.sentence;
@@ -134,18 +136,16 @@ impl Host {
     }
 }
 
-/// 用系统的 `open` 打开文件或目录；输入法进程没有自己的文档窗口，交给访达 / 默认编辑器最省事。
-/// 云端词到了还能不能补进第一页：用户还在第一页，且高亮没落在会被云端词顶掉的那几格上。
+/// 云端词到了还能不能补进当前页：高亮没落在会被云端词顶掉的那几格上。
 /// 没有本地候选（问字模式）时整页都是云端的，谈不上挪走谁，永远能补——
 /// 之前没分这种情况，`page_size - capacity` 算出 0，问字的答案全被当成「会打扰用户」丢掉了。
 pub(super) fn cloud_slots_untouched(
-    page: usize,
     highlighted: usize,
     local_empty: bool,
     page_size: usize,
     capacity: usize,
 ) -> bool {
-    page == 0 && (local_empty || highlighted < page_size.saturating_sub(capacity))
+    local_empty || highlighted < page_size.saturating_sub(capacity)
 }
 
 /// 连通性测试的错误换成给用户看的中文；接口返回的原话保留，方便对着服务商文档查。
@@ -188,10 +188,9 @@ mod tests {
     #[test]
     fn question_answers_fill_the_page_even_though_every_slot_is_cloud() {
         // 问字：没有本地候选，capacity == page_size
-        assert!(super::cloud_slots_untouched(0, 0, true, 9, 9));
-        // 组句：高亮在前面的本地格上能补，高亮已在末尾两格（云端要占的位置）不补，翻页后不补
-        assert!(super::cloud_slots_untouched(0, 0, false, 9, 2));
-        assert!(!super::cloud_slots_untouched(0, 7, false, 9, 2));
-        assert!(!super::cloud_slots_untouched(1, 0, false, 9, 2));
+        assert!(super::cloud_slots_untouched(0, true, 9, 9));
+        // 组句：高亮在前面的本地格上能补，高亮已在末尾两格（云端要占的位置）不补
+        assert!(super::cloud_slots_untouched(0, false, 9, 2));
+        assert!(!super::cloud_slots_untouched(7, false, 9, 2));
     }
 }

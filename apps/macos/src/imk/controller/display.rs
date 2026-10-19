@@ -57,7 +57,8 @@ impl QingjianInputController {
         }
         // 先发联想再画：发出去就留好云端槽位，画出来的第一帧本地候选就已经在最终位置
         if !marked.is_empty() {
-            let candidates = host::with(|h| h.session.layout.local().to_vec()).unwrap_or_default();
+            let candidates = host::with(|h| h.session.layout.prediction_candidates(h.session.page))
+                .unwrap_or_default();
             self.request_prediction(client, &candidates);
         }
         self.render(client);
@@ -139,6 +140,7 @@ impl QingjianInputController {
     /// 上下键。高亮逐个移动，越过页边自动翻页；横排矩阵开着（`[general] horizontal_grid`）时改为：
     /// 单行先展开成矩阵，在矩阵里换行（视口跟着滚）。
     pub(super) fn move_highlight(&self, delta: isize, client: TextClient<'_>) {
+        let previous_page = host::with(|h| h.session.page);
         let changed = host::with(|h| {
             if h.grid_keys() {
                 h.session.move_rows(delta)
@@ -148,6 +150,7 @@ impl QingjianInputController {
         })
         .unwrap_or(false);
         if changed {
+            self.predict_after_page_change(previous_page, client);
             self.render(client);
         }
     }
@@ -155,6 +158,7 @@ impl QingjianInputController {
     /// 左右键。横排矩阵开着而且有候选时归候选：单行里逐个移动高亮（到页边自动翻页，不展开），展开后按阅读顺序跨行移动——
     /// 上下键被矩阵占了，单行里只剩左右键能挪高亮。返回是不是归了候选（不是的话调用方照旧移动拼音光标）。
     pub(super) fn move_cells(&self, delta: isize, client: TextClient<'_>) -> bool {
+        let previous_page = host::with(|h| h.session.page);
         let handled = host::with(|h| {
             if !h.grid_keys() || h.session.layout.is_empty() {
                 return None;
@@ -167,9 +171,22 @@ impl QingjianInputController {
         })
         .flatten();
         if handled == Some(true) {
+            self.predict_after_page_change(previous_page, client);
             self.render(client);
         }
         handled.is_some()
+    }
+
+    /// 方向键越页与显式翻页共用联想入口，同页移动不重复请求。
+    fn predict_after_page_change(&self, previous_page: Option<usize>, client: TextClient<'_>) {
+        let candidates = host::with(|h| {
+            (Some(h.session.page) != previous_page)
+                .then(|| h.session.layout.prediction_candidates(h.session.page))
+        })
+        .flatten();
+        if let Some(candidates) = candidates {
+            self.request_prediction(client, &candidates);
+        }
     }
 
     /// 每个键都问一次应用标识（activateServer 时进程刚拉起可能还拿不到），变了才告诉 Engine。
@@ -184,6 +201,7 @@ impl QingjianInputController {
 
     /// 翻页，高亮落到新页第一项。已在首页 / 末页时不动。
     pub(super) fn turn_page(&self, delta: isize, client: TextClient<'_>) -> bool {
+        let previous_page = host::with(|h| h.session.page);
         let turned = host::with(|h| {
             // 矩阵展开着：翻页键一次翻一屏
             let turned = if h.session.grid.is_some() {
@@ -198,6 +216,7 @@ impl QingjianInputController {
         })
         .unwrap_or(false);
         if turned {
+            self.predict_after_page_change(previous_page, client);
             self.render(client);
         }
         true

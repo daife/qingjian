@@ -80,7 +80,10 @@ pub fn show(engine: &mut Engine, input: &str, limit: usize) -> Option<Query> {
         report.total,
         fmt_duration(t.total() + report.elapsed),
     );
-    show_prediction(engine, &query.candidates.items);
+    show_prediction(
+        engine,
+        &query.candidates.items[..query.candidates.items.len().min(limit)],
+    );
     Some(query)
 }
 

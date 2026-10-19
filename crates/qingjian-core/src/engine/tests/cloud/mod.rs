@@ -647,3 +647,5 @@ fn english_sentence_requests_completion_without_pinyin_conversion() {
 }
 
 mod english;
+
+mod history;

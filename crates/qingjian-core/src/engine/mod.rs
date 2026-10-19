@@ -200,6 +200,9 @@ pub struct Engine {
     /// 最近一次联想请求时的作用域：结果可能在上屏之后才到，日志里要记请求时的拼音。
     last_prediction_scope: String,
 
+    /// 本轮组句中云端已经猜过的词，上屏或清空后丢弃。
+    prediction_history: Vec<String>,
+
     /// 输入统计的累计方（打了多少字）；缺省不记。
     meter: Box<dyn UsageMeter>,
 
@@ -364,9 +367,6 @@ const MIN_PREDICTION_LETTERS: usize = 2;
 /// 辅码触发键的缺省值（`[general] aux_code_key`）。
 pub const DEFAULT_AUX_CODE_KEY: char = ';';
 
-/// 随联想请求附带的本地候选条数。
-const PREDICTION_CANDIDATE_HINTS: usize = 5;
-
 /// 一次查询最多给壳多少条候选。同音字最多的音节也不到这个数，再往后都是长词，没人会翻到。
 const MAX_CANDIDATES: usize = 500;
 
@@ -435,6 +435,7 @@ impl Engine {
             application: None,
             committed_since_break: false,
             last_prediction_scope: String::new(),
+            prediction_history: Vec::new(),
             meter: Box::new(NoUsageMeter),
             vocabulary: Box::new(NoVocabularyTracker),
             gloss_filler: Box::new(NoGlossFiller),

@@ -12,6 +12,7 @@ impl Engine {
         if self.private == private {
             return;
         }
+        self.reset_prediction_history();
         self.private = private;
         self.learner.set_private(private);
         self.logger.set_muted(private);

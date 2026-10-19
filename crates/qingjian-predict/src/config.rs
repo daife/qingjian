@@ -47,7 +47,7 @@ pub struct PredictConfig {
     /// 光标后最多发多少个字符。
     pub lookahead: usize,
 
-    /// 云端词最多补进候选窗口第一页末尾几格；0 表示不要云端词，只要整句补全。
+    /// 云端词最多补进候选窗口每页末尾几格；0 表示不要云端词，只要整句补全。
     pub slots: usize,
 
     /// 中文组句中要不要整句补全。
@@ -114,10 +114,26 @@ impl PredictConfig {
             before: self.lookback,
             after: self.lookahead,
             slots: self.slots,
-            // 比槽位多要两条，与本地候选重复的去掉后还能填满；问字模式的答案也按这个数要
-            max_items: self.slots.max(1) + 2,
+            // 请求上限与配置的槽位数一致；问字也沿用此上限。
+            max_items: self.slots,
             sentence: self.sentence,
             english_sentence: self.english_sentence,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PredictConfig;
+
+    #[test]
+    fn request_limit_matches_configured_slots_including_zero() {
+        for slots in 0..=4 {
+            let config = PredictConfig {
+                slots,
+                ..PredictConfig::default()
+            };
+            assert_eq!(config.policy().max_items, slots);
         }
     }
 }

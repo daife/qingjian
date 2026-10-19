@@ -218,7 +218,7 @@ struct RawWord {
     pinyin: String,
 }
 
-/// 解析模型回复：去空、去重、去换行，截到 `max_items`。不要与本地首选相同的词，也不要没给拼音的词。
+/// 解析模型回复：去空、去重、去换行，截到 `max_items`。不要与候选提示重复的词，也不要没给拼音的词。
 pub fn parse_reply(content: &str, request: &PredictionRequest) -> Reply {
     let raw: RawReply = match serde_json::from_str(content.trim()) {
         Ok(raw) => raw,
@@ -252,7 +252,7 @@ pub fn parse_reply(content: &str, request: &PredictionRequest) -> Reply {
             .collect();
         if text.is_empty()
             || syllables.is_empty()
-            || Some(text.as_str()) == first_local
+            || request.candidates.contains(&text)
             || seen.contains(&text)
         {
             continue;
@@ -279,6 +279,9 @@ pub fn parse_reply(content: &str, request: &PredictionRequest) -> Reply {
 /// 问字模式的答案：去空、去重，拼音只是显示用的读音，不校验。
 fn parse_answers(answers: Vec<RawWord>, max_items: usize) -> Reply {
     let mut reply = Reply::default();
+    if max_items == 0 {
+        return reply;
+    }
     for answer in answers {
         let text = clean(&answer.text);
         if text.is_empty() || reply.words.iter().any(|w| w.text == text) {

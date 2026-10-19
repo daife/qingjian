@@ -11,7 +11,7 @@ pub(super) fn system(request: &PredictionRequest) -> String {
         prompt.push_str("Return up to max_items real English word completions in words. Complete the entire letters as one word, preserve the typed prefix and capitalization, and do not add spaces or unrelated next words. Prefer contextual vocabulary; exclude duplicates. If no reliable completion exists, return an empty words array. ");
     }
     if request.max_items > 0 && !request.candidates.is_empty() {
-        prompt.push_str("Exclude words already in local_candidates. ");
+        prompt.push_str("local_candidates contains candidates through the current page and earlier cloud guesses from this composition; they may be wrong. Use them only as reference and exclude duplicates. ");
     }
     if request.want_sentence {
         prompt.push_str("Return sentence as a natural complete English phrase or sentence replacing letters, preserving its typed prefix and spaces. Do not repeat before or after. If no reliable completion exists, return null. ");

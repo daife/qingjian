@@ -96,12 +96,13 @@ Windows 的 `Router` 把聚焦会话 DLL 送来的光标前文用于云联想；
 - `[predict] sentence` / `english_sentence` 分别控制中文 / 英文整句补全（默认均开启），`PredictionPolicy` 在 Core 发请求时分别检查，服务客户端与场景配置共用。
 - `[predict] scenarios_enabled` 默认关闭，`scenarios` 保存用户填写的场景（逗号 / 分号 / 换行分隔、去空去重）；仅 Compose / English 请求在用户 JSON 中带 `user_scenarios`，系统提示要求输入与即时上下文优先。客户端配置变化时与缓存一起重建，问字 / 翻译 / 释义不带场景。
 - `CloudPredictor`：`Predictor` trait 的网络实现（async-openai，OpenAI 兼容接口，默认 DeepSeek），后台线程防抖 / 缓存 / 超时，`submit` / `poll` 非阻塞。
-  `PredictConfig` 是配置的 `[predict]` 分节。只在组句中联想，一次请求给云端词（容错校验后补进候选第一页末尾 `[predict] slots` 格，缺省 2，不预留不占位，
-  前面的本地候选不挪；排布在 Core `CandidateLayout`）和整句补全（preedit 右侧，Tab）；上屏后不联想，本地历史不进请求。
+  `PredictConfig` 是配置的 `[predict]` 分节。只在组句中联想，一次请求给云端词（容错校验后补进请求所在页末尾 `[predict] slots` 格，缺省 2，不预留不占位，
+  前面的本地候选不挪；排布在 Core `CandidateLayout`）和整句补全（preedit 右侧，Tab）；上屏后不联想，本地上屏历史不进请求。每次请求 `max_items = slots`，不额外多要；问字也沿用该上限，0 条时不请求答案。
+  Windows / macOS 首次输入和跨页时发起请求；`CandidateLayout::prediction_candidates` 按真实布局提供截至当前页的全部候选，不再截前 5 条。Core 另附本轮收到的云端猜词（含被校验过滤的词），去重后作为 `local_candidates`；上屏、清空、输入上下文切换或隐私变化时清除。各页云端词由 `set_cloud_on_page` 保存，过期页结果按请求序号丢弃。
   简拼（半数以上音节是缩写）的请求 `max_items = 0`，只求整句补全（`prediction::mostly_abbreviated`）：按声母凑出来的词大多是生造词，
   拼音校验又按首字母序列匹配放行缩写，拦不住；问字模式的答案不受这条限制。
 - `prompt/chinese` 与 `prompt/english` 是两套独立提示词；按 `max_items` / `want_sentence` 拼任务规则，`prompt/schema` 只要求启用任务的回复字段，schema 写进提示词，接口仍用兼容面更广的 JSON object 模式。用户 JSON 省略未使用的本地提示和条数；英文词无拼音，Core 校验单词前缀并适配大小写。
-  每次只发 system + user，不携带会话历史；联想与释义客户端在 debug 日志记录响应 `usage`（服务商提供时），用于观察实际 token 消耗。
+  每次只发 system + user，不携带对话消息历史；本轮云端猜词仅放在候选参考字段中；联想与释义客户端在 debug 日志记录响应 `usage`（服务商提供时），用于观察实际 token 消耗。
 - 云端缓存会话按五类用途固定标识：中文联想 + 补全 `qingjian-chinese-prediction`、英文联想 + 补全 `qingjian-english-prediction`、释义补全 `qingjian-gloss-completion`、选区翻译 `qingjian-selection-translation`、问字 `qingjian-character-question`。标识不含个人信息或输入内容，重启 / 重建客户端不变；连接测试复用中文标识。
   按接口主机映射：[DeepSeek](https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/) 请求体 `user_id`、[OpenAI](https://developers.openai.com/api/docs/guides/prompt-caching) 请求体 `prompt_cache_key`、[OpenRouter](https://openrouter.ai/docs/guides/best-practices/prompt-caching) 请求体 `session_id`、OpenCode 请求头 `x-opencode-session`；未知兼容端点不发额外参数，代理域名不自动推断上游。各家隔离 / 路由语义不同，标识不能保证缓存命中，仍取决于提示前缀、模型及服务端缓存策略。
 - `CloudGlossFiller`：释义兜底（Core `GlossFiller` trait，与 Predictor 分开的线程与通道，攒 1.5 秒 / 8 个词发一次，问过不再问）：

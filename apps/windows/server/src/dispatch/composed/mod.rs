@@ -31,7 +31,8 @@ impl Router {
                     CandidateLayout::new(items, self.config.page_size, self.config.cloud_slots);
                 if self.engine.prediction_enabled() {
                     let surrounding = self.surrounding_for_prediction();
-                    self.engine.request_prediction(surrounding, layout.local());
+                    self.engine
+                        .request_prediction_for_page(surrounding, &layout, 0);
                 }
                 Composed::Candidates {
                     preedit,
@@ -79,7 +80,7 @@ impl Router {
                 .into_iter()
                 .map(CloudWord::into_candidate)
                 .collect();
-            layout.set_cloud(words);
+            layout.set_cloud_on_page(self.highlight / self.config.page_size, words);
             self.sentence = prediction.sentence;
         }
     }
@@ -95,9 +96,12 @@ impl Router {
         let Some(Composed::Candidates { layout, .. }) = &self.composed else {
             return;
         };
-        let local = layout.local().to_vec();
         let surrounding = self.surrounding_for_prediction();
-        self.engine.request_prediction(surrounding, &local);
+        self.engine.request_prediction_for_page(
+            surrounding,
+            layout,
+            self.highlight / self.config.page_size,
+        );
     }
 
     /// DLL 报来的光标前文包成云联想要的形状；没有就 `None`（Engine 只靠拼音猜）。
@@ -116,8 +120,12 @@ impl Router {
             return;
         }
         let next = (self.highlight as isize + delta).clamp(0, count as isize - 1) as usize;
+        let changed_page = next / self.config.page_size != self.highlight / self.config.page_size;
         self.navigated |= next != self.highlight;
         self.highlight = next;
+        if changed_page {
+            self.refresh_prediction();
+        }
     }
 
     /// 整页翻 `step`，高亮落到目标页第一个候选。
@@ -136,6 +144,9 @@ impl Router {
             self.engine.note_page_turn();
         }
         self.highlight = (target * page_size).min(count - 1);
+        if target != current as usize {
+            self.refresh_prediction();
+        }
     }
 
     pub(super) fn candidate_count(&self) -> usize {

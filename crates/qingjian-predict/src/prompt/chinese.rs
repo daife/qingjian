@@ -9,7 +9,7 @@ pub(super) fn system(request: &qingjian_core::PredictionRequest) -> String {
     let mut prompt = String::from(COMPOSE_CONTEXT);
     if request.max_items > 0 {
         if !request.candidates.is_empty() {
-            prompt.push_str("local_candidates 是可能错误的本地词候选，仅作参考，不要受其误导；words 不要与它重复。");
+            prompt.push_str("local_candidates 包含前面页及当前页的候选，以及本轮输入中云端已经猜过的词，均可能有误，仅作参考，不要受其误导；words 不要与它重复。");
         }
         prompt.push_str(WORD_RULES);
     }

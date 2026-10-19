@@ -1,7 +1,11 @@
+//! 本地与云端候选的分页排布，以及按页构造联想提示。
+
+use std::collections::BTreeMap;
+
 use super::super::{Candidate, CandidateKind};
 use super::Cell;
 
-/// 本地候选 + 云端词的分页排布。索引空间是「格」：第一页先本地后云端，之后各页全是本地候选。
+/// 本地候选 + 云端词的分页排布。索引空间是「格」：每页先本地后云端，尚未返回云端词时全部显示本地候选。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateLayout {
     /// 本地候选，顺序就是 Engine 排好的顺序。
@@ -9,6 +13,9 @@ pub struct CandidateLayout {
 
     /// 已到的云端词（≤ 槽位数，与本地候选去过重）。
     cloud: Vec<Candidate>,
+
+    /// 第二页起的云端词，按页保存，翻回时仍可选择。
+    cloud_pages: BTreeMap<usize, Vec<Candidate>>,
 
     /// 每页几格。
     page_size: usize,
@@ -22,6 +29,7 @@ impl CandidateLayout {
         Self {
             local,
             cloud: Vec::new(),
+            cloud_pages: BTreeMap::new(),
             page_size: page_size.max(1),
             slots,
         }
@@ -57,21 +65,74 @@ impl CandidateLayout {
         }
     }
 
-    /// 云端词到了：与本地候选同文的不要（本地已经能给），其余按顺序填进第一页末尾，多出来的丢掉。返回填进去的条数。
+    /// 兼容第一页的调用；其他页使用 [`Self::set_cloud_on_page`]。
     pub fn set_cloud(&mut self, words: Vec<Candidate>) -> usize {
-        self.cloud.clear();
-        let capacity = self.capacity();
+        self.set_cloud_on_page(0, words)
+    }
+
+    /// 前面页与当前页的全部真实候选，按显示顺序发送，不含空格。
+    pub fn prediction_candidates(&self, page: usize) -> Vec<Candidate> {
+        self.cells()
+            .into_iter()
+            .take(page.saturating_add(1).saturating_mul(self.page_size))
+            .filter_map(|cell| cell.candidate().cloned())
+            .collect()
+    }
+
+    /// 当前页末尾可容纳的云端词数，至少留下一个本地位置。
+    pub fn capacity_on_page(&self, page: usize) -> usize {
+        if page == 0 {
+            return self.capacity();
+        }
+        // 后面的固定位置也不能被本页插入的云端词推走。
+        let fixed = self
+            .local
+            .iter()
+            .filter_map(|c| match c.kind {
+                CandidateKind::Custom(position) => Some(position),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0)
+            .saturating_sub(page * self.page_size)
+            .max(1);
+        self.slots.min(self.page_size.saturating_sub(fixed))
+    }
+
+    /// 云端词补到请求所在页，保留前面各页的结果，与所有本地词和其他页云端词去重。
+    pub fn set_cloud_on_page(&mut self, page: usize, words: Vec<Candidate>) -> usize {
+        if page == 0 {
+            self.cloud.clear();
+        } else {
+            self.cloud_pages.remove(&page);
+        }
+        let capacity = self.capacity_on_page(page);
+        let mut filled: Vec<Candidate> = Vec::new();
         for mut word in words {
-            if self.cloud.len() >= capacity
-                || self.local.iter().any(|c| c.text == word.text)
+            if filled.len() >= capacity {
+                break;
+            }
+            if self.local.iter().any(|c| c.text == word.text)
                 || self.cloud.iter().any(|c| c.text == word.text)
+                || self
+                    .cloud_pages
+                    .values()
+                    .flatten()
+                    .any(|c| c.text == word.text)
+                || filled.iter().any(|c| c.text == word.text)
             {
                 continue;
             }
             word.kind = CandidateKind::Cloud;
-            self.cloud.push(word);
+            filled.push(word);
         }
-        self.cloud.len()
+        let count = filled.len();
+        if page == 0 {
+            self.cloud = filled;
+        } else if !filled.is_empty() {
+            self.cloud_pages.insert(page, filled);
+        }
+        count
     }
 
     /// 本地格数包含最大固定位置之前的空格。
@@ -116,11 +177,15 @@ impl CandidateLayout {
         let mut cells = self.local_cells();
         let first = cells.len().min(self.page_size - self.cloud.len());
         cells.splice(first..first, self.cloud.iter().map(Cell::Cloud));
+        for (&page, words) in &self.cloud_pages {
+            let start = ((page + 1) * self.page_size - words.len()).min(cells.len());
+            cells.splice(start..start, words.iter().map(Cell::Cloud));
+        }
         cells
     }
 
     pub fn len(&self) -> usize {
-        self.local_len() + self.cloud.len()
+        self.local_len() + self.cloud.len() + self.cloud_pages.values().map(Vec::len).sum::<usize>()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -181,6 +246,40 @@ mod tests {
 
     fn many(count: usize) -> Vec<Candidate> {
         (0..count).map(|i| local(&format!("本{i}"))).collect()
+    }
+
+    #[test]
+    fn page_predictions_include_all_visible_candidates_and_keep_earlier_cloud_words() {
+        let mut layout = CandidateLayout::new(many(12), 4, 1);
+        assert_eq!(layout.prediction_candidates(0).len(), 4);
+        layout.set_cloud_on_page(0, vec![cloud("云0")]);
+        assert_eq!(
+            layout
+                .prediction_candidates(1)
+                .iter()
+                .map(|c| c.text.as_str())
+                .collect::<Vec<_>>(),
+            ["本0", "本1", "本2", "云0", "本3", "本4", "本5", "本6"]
+        );
+        layout.set_cloud_on_page(1, vec![cloud("云1")]);
+        assert_eq!(texts(&layout.page(0)), ["本0", "本1", "本2", "☁云0"]);
+        assert_eq!(texts(&layout.page(1)), ["本3", "本4", "本5", "☁云1"]);
+        assert_eq!(texts(&layout.page(2)), ["本6", "本7", "本8", "本9"]);
+        assert_eq!(layout.prediction_candidates(0).len(), 4);
+        assert_eq!(layout.len(), 14);
+        // 末页不足一页时也把云端词放到末页，不丢本地候选。
+        layout.set_cloud_on_page(3, vec![cloud("云3")]);
+        assert_eq!(texts(&layout.page(3)), ["本10", "本11", "☁云3"]);
+        let mut fixed = CandidateLayout::new(
+            vec![Candidate {
+                kind: CandidateKind::Custom(14),
+                ..local("固定")
+            }],
+            5,
+            2,
+        );
+        assert_eq!(fixed.set_cloud_on_page(1, vec![cloud("云")]), 0);
+        assert_eq!(fixed.candidate(13).unwrap().text, "固定");
     }
 
     #[test]

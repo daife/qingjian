@@ -59,6 +59,7 @@ impl Engine {
     /// 壳告知光标离开了刚才上屏的位置（切换应用、点了别处、停用输入法）：之后上屏的词按句首记。
     /// 上次断开之后有过上屏才往输入日志记一条 `break`，连着失焦几次只记一次。
     pub fn break_chain(&mut self) {
+        self.reset_prediction_history();
         self.chain.reset();
         self.recent_commits.clear();
         self.flush_passthrough();
@@ -153,6 +154,7 @@ impl Engine {
 
     /// 记一次上屏到最近上屏列表，超出条数丢最早的。
     pub(super) fn remember_commit(&mut self, commit: LastCommit) {
+        self.reset_prediction_history();
         if commit.chars == 0 {
             return;
         }
@@ -169,6 +171,7 @@ impl Engine {
     pub fn push(&mut self, c: char) {
         self.cancel_translation_commit();
         if self.composition.is_empty() {
+            self.reset_prediction_history();
             // 新一段组句：从这一键起算耗时、翻页与重打
             self.composition_started = Some(Instant::now());
             self.page_turns = 0;
@@ -208,6 +211,7 @@ impl Engine {
     }
 
     pub fn clear(&mut self) {
+        self.reset_prediction_history();
         self.cancel_translation_commit();
         self.composition.clear();
         self.aux_code = None;
@@ -337,6 +341,7 @@ impl Engine {
 
     /// 用一段完整拼音替换当前缓冲区，供 CLI 和测试一次性喂入。
     pub fn set_input(&mut self, input: &str) {
+        self.reset_prediction_history();
         self.cancel_translation_commit();
         self.composition.clear();
         for c in input.chars() {

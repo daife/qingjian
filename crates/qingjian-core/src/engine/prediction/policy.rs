@@ -15,10 +15,10 @@ pub struct PredictionPolicy {
     /// 光标后最多看几个字符。
     pub after: usize,
 
-    /// 云端词最多补进候选窗口第一页末尾几格；0 表示不要云端词（整句补全照发）。
+    /// 云端词最多补进候选窗口每页末尾几格；0 表示不要云端词（整句补全照发）。
     pub slots: usize,
 
-    /// 向云端最多要几条（比槽位多要几条，与本地候选重复的去掉后还能填满）。
+    /// 向云端最多要几条，与配置的槽位数一致。
     pub max_items: usize,
 
     /// 中文组句中要不要整句补全。
@@ -36,7 +36,7 @@ impl Default for PredictionPolicy {
             before: 64,
             after: 32,
             slots: 2,
-            max_items: 4,
+            max_items: 2,
             sentence: true,
             english_sentence: true,
         }

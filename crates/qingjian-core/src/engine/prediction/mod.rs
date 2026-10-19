@@ -2,7 +2,7 @@
 //!
 //! [`Predictor`] 由壳注入（网络实现在 `qingjian-predict`，Core 永远不联网），Engine 负责裁剪上下文、
 //! 编号请求、校验云端词的拼音、丢弃过期结果。联想**不参与排序、不阻塞输入**；
-//! 云端词到了只补进候选窗口第一页末尾几格（[`crate::CandidateLayout`]），前面的本地候选不挪。
+//! 云端词到了补进请求所在页末尾几格（[`crate::CandidateLayout`]），前面的本地候选不挪。
 //!
 //! Engine 这一侧的实现：组句中发请求、收结果校验、Tab 接受整句；翻译选中文字也走这里。
 
@@ -32,8 +32,8 @@ pub use surrounding_text::SurroundingText;
 pub use translation::{NoSelectionTranslator, SelectionTranslator};
 
 use super::{
-    Engine, MIN_PREDICTION_LETTERS, PREDICTION_CANDIDATE_HINTS, is_raw, query,
-    segment_longest_prefix, take_first_chars, take_last_chars,
+    Engine, MIN_PREDICTION_LETTERS, is_raw, query, segment_longest_prefix, take_first_chars,
+    take_last_chars,
 };
 use crate::candidate::Candidate;
 use crate::engine::commit::LastCommit;
@@ -58,9 +58,20 @@ impl Engine {
         self.predictor.policy()
     }
 
+    /// 根据实际分页排布发送截至当前页的候选；布局与请求规则由 Core 共用。
+    pub fn request_prediction_for_page(
+        &mut self,
+        surrounding: Option<SurroundingText>,
+        layout: &crate::CandidateLayout,
+        page: usize,
+    ) -> Option<u64> {
+        let candidates = layout.prediction_candidates(page);
+        self.request_prediction(surrounding, &candidates)
+    }
+
     /// 发一次联想请求，返回序号；没接 Predictor、私密输入中或拼音太短时不发，返回 `None`。
     ///
-    /// 要的是「当前作用域拼音对应的词」和整句补全；`candidates` 是本地候选，只取前几个当提示。
+    /// 要的是「当前作用域拼音对应的词」和整句补全；`candidates` 是截至当前页的候选，另附本轮云端猜词历史。
     /// `surrounding` 是应用给的光标前后文本，在这里按观察窗口裁剪，壳给得再多也只发这么多；
     /// 应用给不出上下文就只靠拼音，本地输入历史不可靠、不用。上屏之后不联想：没有拼音约束的下文联想只是噪音。
     pub fn request_prediction(
@@ -76,6 +87,15 @@ impl Engine {
         // 辅码态在按码筛词，云端词没有码、进来只会打乱；不发请求，槽位自然收起
         if self.aux_filter().is_some() {
             return None;
+        }
+        let mut candidates: Vec<String> = candidates
+            .iter()
+            .map(|candidate| candidate.text.clone())
+            .collect();
+        for text in &self.prediction_history {
+            if !candidates.contains(text) {
+                candidates.push(text.clone());
+            }
         }
         let policy = self.predictor.policy();
         let (before, after) = match surrounding {
@@ -104,11 +124,7 @@ impl Engine {
                 letters: scope.to_owned(),
                 syllables: 0,
                 candidates: if want_words {
-                    candidates
-                        .iter()
-                        .take(PREDICTION_CANDIDATE_HINTS)
-                        .map(|c| c.text.clone())
-                        .collect()
+                    candidates.clone()
                 } else {
                     Vec::new()
                 },
@@ -169,7 +185,8 @@ impl Engine {
         if question {
             self.last_question_guess = guess.clone();
         }
-        let want_words = question || (policy.chinese_words && policy.slots > 0 && !abbreviated);
+        let want_words = (question && policy.max_items > 0)
+            || (!question && policy.chinese_words && policy.slots > 0 && !abbreviated);
         let want_sentence = policy.sentence && !question;
         if !want_words && !want_sentence {
             return None;
@@ -182,11 +199,7 @@ impl Engine {
             pinyin,
             letters: pinyin_source.replace('\'', ""),
             syllables,
-            candidates: candidates
-                .iter()
-                .take(PREDICTION_CANDIDATE_HINTS)
-                .map(|c| c.text.clone())
-                .collect(),
+            candidates,
             guess,
             // 简拼（半数以上音节是缩写）不问词：模型按声母凑出来的大多是生造词（复合语气、符号映射），
             // 只问整句补全；问字模式的答案不受这条限制（答案本来就对不上问题的拼音）。
@@ -241,6 +254,11 @@ impl Engine {
         Some(self.prediction_sequence)
     }
 
+    /// 结束本轮组句的猜词历史，不影响个人学习数据。
+    pub(super) fn reset_prediction_history(&mut self) {
+        self.prediction_history.clear();
+    }
+
     /// 作废正在飞的联想（用户清空了拼音、关掉了联想框）。
     pub fn cancel_prediction(&mut self) {
         self.cancel_translation_commit();
@@ -255,6 +273,16 @@ impl Engine {
             .or_else(|| self.predictor.poll())
         {
             if prediction.sequence == self.prediction_sequence {
+                if matches!(
+                    self.last_prediction_kind,
+                    PredictionKind::Compose | PredictionKind::English
+                ) {
+                    for word in &prediction.words {
+                        if !self.prediction_history.contains(&word.text) {
+                            self.prediction_history.push(word.text.clone());
+                        }
+                    }
+                }
                 // 问字的答案、翻译的译文和敲的拼音本来就对不上，只有组句联想的云端词要校验
                 if self.last_prediction_kind == PredictionKind::Question {
                     let guess = &self.last_question_guess;
