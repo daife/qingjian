@@ -118,7 +118,7 @@ impl FromStr for Modifiers {
                 "option" | "alt" | "⌥" => out.option = true,
                 "shift" | "⇧" => out.shift = true,
                 "control" | "ctrl" | "⌃" => out.control = true,
-                "command" | "cmd" | "⌘" => out.command = true,
+                "command" | "cmd" | "win" | "⌘" => out.command = true,
                 other => return Err(format!("unknown modifier: {other}")),
             }
         }

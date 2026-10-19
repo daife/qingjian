@@ -24,6 +24,12 @@ mod session;
 /// 就是这么来的（`unknown variant `Code``）。加变体必须同时 +1 并重装 DLL，否则连警告都不会有。
 pub const PROTOCOL_VERSION: u32 = 8;
 
+/// Windows 辅助功能通过既有 TSF 消息窗口定向捕获目标，不增加空闲轮询。
+pub const ASSIST_CAPTURE_MESSAGE: u32 = 0x83A1;
+
+/// `WM_COPYDATA` 的识别结果标记；负载为 u32 任务令牌及 UTF-16 文本。
+pub const ASSIST_COPY_TAG: usize = 0x514A4153;
+
 /// 从这个版本起 DLL 能接收异步译词上屏。
 pub const TRANSLATION_COMMIT_SINCE: u32 = 8;
 

@@ -13,8 +13,8 @@ pub mod protocol;
 pub mod resources;
 
 pub use config::{
-    AppsConfig, AuxCodeConfig, CandidateRenderer, CommitAction, Config, DEFAULT_DOMAINS,
-    DEFAULT_ENGLISH_CANDIDATES_ON, DEFAULT_ENGLISH_CANDIDATES_ON_LINUX,
+    AccessibilityConfig, AppsConfig, AuxCodeConfig, CandidateRenderer, CommitAction, Config,
+    DEFAULT_DOMAINS, DEFAULT_ENGLISH_CANDIDATES_ON, DEFAULT_ENGLISH_CANDIDATES_ON_LINUX,
     DEFAULT_ENGLISH_CANDIDATES_ON_MACOS, DEFAULT_ENGLISH_CANDIDATES_ON_WINDOWS, DEFAULT_PAGE_KEYS,
     DictionariesConfig, GeneralConfig, KeyCombo, LEARNING_LANGUAGE_OFF, LayoutMode,
     LocalModelConfig, LogLevel, MAX_PAGE_SIZE, Modifiers, PAGE_KEY_OPTIONS, PreeditMode, Scheme,

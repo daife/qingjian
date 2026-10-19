@@ -12,6 +12,7 @@ members = [
     "crates/qingjian-neural",
     "crates/qingjian-render",
     "crates/qingjian-update",
+    "crates/qingjian-recognize",
     "apps/linux/server", "apps/cli", "apps/macos", "apps/windows/server", "apps/windows/tsf", "apps/windows/settings", "tools/dict-convert", "tools/gloss-gen", "tools/release-sign",
 ]
 
@@ -37,6 +38,7 @@ qingjian-format = { path = "crates/qingjian-format" }
 qingjian-neural = { path = "crates/qingjian-neural" }
 qingjian-render = { path = "crates/qingjian-render" }
 qingjian-update = { path = "crates/qingjian-update" }
+qingjian-recognize = { path = "crates/qingjian-recognize" }
 
 # 外部依赖统一在这里定版本，子 crate 一律 `xxx.workspace = true`
 serde = { version = "1.0.229", features = ["derive"] }

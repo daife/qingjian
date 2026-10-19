@@ -274,7 +274,19 @@ IMK 输入法，源码按 `app / host / imk / candidates / menubar / preferences
   结果到了重查一次只重画当前页（翻过页 / 动过高亮不动）；「云服务」页有开关（`[model] enabled`）。
 - 端到端验证可用 `osascript` 的 System Events 往 TextEdit 发按键再读回文本（终端需要辅助功能权限；输入法得在中文模式）。
 
+## crates/qingjian-recognize
+
+`Recognizer` 是与平台采集解耦的有道公开网页 OCR / ASR 客户端，无需密钥，独立于云联想。
+PNG 本地上限 5 MiB；PCM WAV 为单声道 16 kHz / 16 位，最长 60 秒；连接 5 秒 / 总请求 60 秒超时，响应上限 2 MiB，不自动重试或重定向。
+返回正文与媒体不写日志。接口、验证与 Windows 生命周期见 [辅助功能设计](../design/windows-accessibility.md)。
+
 ## apps/windows
+
+Server `accessibility/` 管理全局热键、每屏不透明截图窗口、WASAPI 事件录音与后台识别。
+`[accessibility]` 功能默认关闭；`[shortcut] screenshot_ocr` / `speech_recognition` 默认 Ctrl+Shift+S / Ctrl+Shift+H，设置入口仅在快捷键页。
+截图只持有一张虚拟桌面 DIB，蒙层用 1×1 黑图合成；PNG 按行编码。录音内存上限 1,920,000 字节 PCM（另加 44 字节 WAV 头），60 秒自动结束。
+任务期间临时钩子配对消费 Space / Esc / 右键，取消后不接收迟到结果。原编辑目标用 UIA 身份和定向 TSF 消息令牌校验，异步编辑会话内再次校验。
+网络验证 `recognition_live` 默认忽略，显式设置合成样本目录后才会上传，命令见设计页。
 
 Server 在 Windows 的 debug / release 构建都使用 GUI 子系统，避免 TSF 用 `ShellExecuteW` 自动拉起时弹出控制台。诊断读取 `%LOCALAPPDATA%\Qingjian\logs\server.<日期>.log`，不依赖终端窗口。
 

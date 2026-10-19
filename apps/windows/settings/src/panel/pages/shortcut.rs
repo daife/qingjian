@@ -1,7 +1,7 @@
 //! 「快捷键」页：翻页键、模式键，译词 / 删候选 / 翻译选中文字的修饰键。
 //! 翻译选中文字只改修饰键，字母键固定用配置里当前的；要换字母直接改 `config.toml`。
 
-use qingjian_platform::{CommitAction, Modifiers};
+use qingjian_platform::{CommitAction, KeyCombo, Modifiers};
 use windows_reactor::{
     Callback, ChildrenControl, ComboBox, NumberBox, StackPanel, ToggleSwitch, View, ViewContext,
 };
@@ -57,6 +57,8 @@ fn modifier_combo(current: Modifiers, callback: Callback<Option<usize>>) -> Comb
 pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> View {
     let s = &settings.config.shortcut;
     let rows = [
+        assist_shortcut("截图 OCR", s.screenshot_ocr, false, context),
+        assist_shortcut("通用语音识别", s.speech_recognition, true, context),
         field(
             "长按空格（Space）",
             "按键固定，超过阈值后松开执行。启用后空格选词改为短按松开触发；默认在输入内容的光标位置添加一个空格，继续输入整句；未在输入时按键仍交给应用。",
@@ -162,4 +164,60 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
         ),
     ];
     page("快捷键", StackPanel::new().spacing(16.0).children(rows))
+}
+
+/// 全局快捷键的全部修饰键组合。
+pub(crate) const ASSIST_MODIFIERS: [(&str, &str); 16] = [
+    ("Ctrl + Shift", "ctrl+shift"),
+    ("Ctrl + Alt", "ctrl+alt"),
+    ("Alt + Shift", "alt+shift"),
+    ("Ctrl", "ctrl"),
+    ("Alt", "alt"),
+    ("Shift", "shift"),
+    ("Ctrl + Alt + Shift", "ctrl+alt+shift"),
+    ("Win", "win"),
+    ("Win + Ctrl", "win+ctrl"),
+    ("Win + Alt", "win+alt"),
+    ("Win + Shift", "win+shift"),
+    ("Win + Ctrl + Alt", "win+ctrl+alt"),
+    ("Win + Ctrl + Shift", "win+ctrl+shift"),
+    ("Win + Alt + Shift", "win+alt+shift"),
+    ("Win + Ctrl + Alt + Shift", "win+ctrl+alt+shift"),
+    ("关闭", "none"),
+];
+pub(crate) const ASSIST_KEYS: &str = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+fn assist_shortcut(
+    label: &str,
+    combo: KeyCombo,
+    speech: bool,
+    context: &mut ViewContext<Settings>,
+) -> View {
+    use windows_reactor::Orientation;
+    let selected = ASSIST_MODIFIERS
+        .iter()
+        .position(|(_, value)| value.parse::<Modifiers>().ok() == Some(combo.modifiers));
+    field(
+        label,
+        "全局快捷键；功能开关与渠道在「辅助功能」。已被系统或其他程序占用时会提示，请更换组合。",
+        StackPanel::new()
+            .orientation(Orientation::Horizontal)
+            .spacing(8.0)
+            .children((
+                ComboBox::new()
+                    .items_source(ASSIST_MODIFIERS.iter().map(|(label, _)| *label))
+                    .selected_index(selected)
+                    .on_selection_changed(
+                        context.callback(move |i| Message::AssistModifiers(speech, i)),
+                    ),
+                ComboBox::new()
+                    .items_source(
+                        ASSIST_KEYS
+                            .chars()
+                            .map(|c| c.to_ascii_uppercase().to_string()),
+                    )
+                    .selected_index(ASSIST_KEYS.find(combo.key))
+                    .on_selection_changed(context.callback(move |i| Message::AssistKey(speech, i))),
+            )),
+    )
 }

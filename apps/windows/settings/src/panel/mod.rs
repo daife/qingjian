@@ -19,7 +19,8 @@ use self::cloud_status::CloudStatus;
 pub(crate) use self::message::Message;
 use self::notice::Notice;
 use self::pages::{
-    about, advanced, aux_code, candidates, cloud, dictionaries, fuzzy, general, shortcut, usage,
+    about, accessibility, advanced, aux_code, candidates, cloud, dictionaries, fuzzy, general,
+    shortcut, usage,
 };
 use self::recorder::Recorder;
 
@@ -118,6 +119,7 @@ impl Settings {
         match self.page.as_str() {
             "candidates" => candidates::view(self, context),
             "shortcut" => shortcut::view(self, context),
+            "accessibility" => accessibility::view(self, context),
             "cloud" => cloud::view(self, context),
             "fuzzy" => fuzzy::view(self, context),
             "dictionaries" => dictionaries::view(self, context),

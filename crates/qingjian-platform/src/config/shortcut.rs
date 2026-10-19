@@ -10,6 +10,12 @@ use super::switch_key::SwitchKeys;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ShortcutConfig {
+    /// Windows：全局截图 OCR。
+    pub screenshot_ocr: KeyCombo,
+
+    /// Windows：全局语音识别。
+    pub speech_recognition: KeyCombo,
+
     /// 表达式 / 问字模式键，键名与以前一样直接在分节下（`expression` / `question`）。
     #[serde(flatten)]
     pub mode: ModeKeys,
@@ -53,6 +59,8 @@ impl Default for ShortcutConfig {
         #[cfg(not(windows))]
         let (translation, translation_second) = (Modifiers::OPTION, Modifiers::SHIFT_OPTION);
         Self {
+            screenshot_ocr: KeyCombo::OCR_DEFAULT,
+            speech_recognition: KeyCombo::SPEECH_DEFAULT,
             enter_on_release: true,
             space_on_release: true,
             enter_hold: CommitAction::FirstTranslation,
@@ -104,6 +112,22 @@ impl ShortcutConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn accessibility_combos_default_and_disable_independently() {
+        let old: ShortcutConfig = toml::from_str("").unwrap();
+        assert_eq!(old.screenshot_ocr, KeyCombo::OCR_DEFAULT);
+        assert_eq!(old.speech_recognition, KeyCombo::SPEECH_DEFAULT);
+        let edited: ShortcutConfig =
+            toml::from_str("screenshot_ocr = 'none'\nspeech_recognition = 'win+alt+9'").unwrap();
+        assert!(edited.screenshot_ocr.modifiers.is_empty());
+        assert_eq!(edited.speech_recognition.key, '9');
+        assert!(edited.speech_recognition.modifiers.command);
+        assert_eq!(
+            toml::from_str::<ShortcutConfig>(&toml::to_string(&edited).unwrap()).unwrap(),
+            edited
+        );
+    }
 
     #[test]
     fn fixed_commit_keys_default_to_release_and_round_trip_settings() {

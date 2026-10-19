@@ -107,6 +107,47 @@ impl Drop for PollTimer {
 }
 
 unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if msg == qingjian_platform::protocol::ASSIST_CAPTURE_MESSAGE {
+        let captured = catch_unwind(AssertUnwindSafe(|| {
+            if lparam.0 == 1 {
+                super::service::recognition::release(Some(wparam.0 as u32));
+                false
+            } else {
+                super::service::recognition::capture(wparam.0 as u32)
+            }
+        }))
+        .unwrap_or(false);
+        return LRESULT(isize::from(captured));
+    }
+    if msg == windows::Win32::UI::WindowsAndMessaging::WM_COPYDATA && lparam.0 != 0 {
+        let accepted = catch_unwind(AssertUnwindSafe(|| {
+            let data = unsafe {
+                &*(lparam.0 as *const windows::Win32::System::DataExchange::COPYDATASTRUCT)
+            };
+            if data.dwData != qingjian_platform::protocol::ASSIST_COPY_TAG
+                || data.lpData.is_null()
+                || data.cbData < 6
+                || data.cbData > 1024 * 1024
+                || !data.cbData.is_multiple_of(2)
+            {
+                return false;
+            }
+            let bytes = unsafe {
+                std::slice::from_raw_parts(data.lpData.cast::<u8>(), data.cbData as usize)
+            };
+            let token = u32::from_le_bytes(bytes[..4].try_into().unwrap());
+            let utf16: Vec<u16> = bytes[4..]
+                .chunks_exact(2)
+                .map(|unit| u16::from_le_bytes([unit[0], unit[1]]))
+                .collect();
+            let Ok(text) = String::from_utf16(&utf16) else {
+                return false;
+            };
+            super::service::recognition::insert(token, text)
+        }))
+        .unwrap_or(false);
+        return LRESULT(isize::from(accepted));
+    }
     if msg == WM_TIMER && wparam.0 == HOLD_TIMER_ID {
         unsafe {
             let _ = KillTimer(Some(hwnd), HOLD_TIMER_ID);

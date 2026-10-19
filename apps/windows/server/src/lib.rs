@@ -1,5 +1,8 @@
 //! Server 的库部分：Engine 装配（[`assembly`]）、协议分派（[`Router`]）与传输（[`ipc`]），供 bin 与集成测试共用。
 
+#[cfg(windows)]
+pub mod accessibility;
+
 pub mod assembly;
 pub mod dispatch;
 pub mod error;

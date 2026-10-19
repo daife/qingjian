@@ -54,6 +54,54 @@ impl Component for Settings {
             }
             Message::Navigate(None) => {}
 
+            Message::OcrEnabled(on) => self.save("accessibility", "ocr_enabled", on),
+            Message::SpeechEnabled(on) => self.save("accessibility", "speech_enabled", on),
+            Message::OcrChannel(Some(0)) => {
+                self.save("accessibility", "ocr_channel", "youdao_public")
+            }
+            Message::SpeechChannel(Some(0)) => {
+                self.save("accessibility", "speech_channel", "youdao_public")
+            }
+            Message::SpeechLanguage(Some(i)) if i < 2 => {
+                self.save("accessibility", "speech_language", ["zh-CHS", "en"][i])
+            }
+            Message::AssistModifiers(speech, Some(i)) if i < shortcut::ASSIST_MODIFIERS.len() => {
+                let mut combo = if speech {
+                    self.config.shortcut.speech_recognition
+                } else {
+                    self.config.shortcut.screenshot_ocr
+                };
+                if let Ok(modifiers) = shortcut::ASSIST_MODIFIERS[i].1.parse() {
+                    combo.modifiers = modifiers;
+                    self.save(
+                        "shortcut",
+                        if speech {
+                            "speech_recognition"
+                        } else {
+                            "screenshot_ocr"
+                        },
+                        combo.key_string(),
+                    );
+                }
+            }
+            Message::AssistKey(speech, Some(i)) if i < 36 => {
+                let mut combo = if speech {
+                    self.config.shortcut.speech_recognition
+                } else {
+                    self.config.shortcut.screenshot_ocr
+                };
+                combo.key = shortcut::ASSIST_KEYS.as_bytes()[i] as char;
+                self.save(
+                    "shortcut",
+                    if speech {
+                        "speech_recognition"
+                    } else {
+                        "screenshot_ocr"
+                    },
+                    combo.key_string(),
+                );
+            }
+
             // 通用页
             Message::LearningLanguage(Some(i)) if i < general::LANGUAGES.len() => {
                 self.save("general", "learning_language", general::LANGUAGES[i].1);
@@ -406,6 +454,7 @@ impl Component for Settings {
             item("general", "通用", Symbol::Setting),
             item("candidates", "候选窗口", Symbol::View),
             item("shortcut", "快捷键", Symbol::Keyboard),
+            item("accessibility", "辅助功能", Symbol::Repair),
             item("cloud", "云服务", Symbol::World),
             item("fuzzy", "模糊音", Symbol::Audio),
             item("dictionaries", "词库", Symbol::Library),

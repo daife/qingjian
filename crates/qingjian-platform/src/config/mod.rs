@@ -1,3 +1,4 @@
+mod accessibility;
 mod apps;
 mod aux_code;
 mod candidate_renderer;
@@ -27,6 +28,7 @@ use toml_edit::DocumentMut;
 
 use crate::error::ConfigError;
 
+pub use accessibility::AccessibilityConfig;
 pub use apps::{
     AppsConfig, DEFAULT_ENGLISH_CANDIDATES_ON, DEFAULT_ENGLISH_CANDIDATES_ON_LINUX,
     DEFAULT_ENGLISH_CANDIDATES_ON_MACOS, DEFAULT_ENGLISH_CANDIDATES_ON_WINDOWS,
@@ -58,6 +60,9 @@ pub use update::{UpdateChannel, UpdateConfig};
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    /// Windows：截图 OCR 与通用语音识别。
+    pub accessibility: AccessibilityConfig,
+
     /// 常规：学习语言、每页候选数、翻页键、外观。
     pub general: GeneralConfig,
 
@@ -299,6 +304,9 @@ system_text_replacements = true
 # enabled = true    # 是否启用；停用仍保留位置
 
 [shortcut]
+# Windows 全局辅助功能快捷键；none 关闭
+screenshot_ocr = "control+shift+s"
+speech_recognition = "control+shift+h"
 # 前缀模式键，只能是 v / u / i 之一且互不相同（这三个字母不是任何拼音音节的开头）
 # 表达式模式：v1+2 出 3，v123 出中文数字
 expression = "v"
@@ -387,6 +395,14 @@ channel = "llm"
 # 快捷键翻译选中文字，独立于候选词联想与整句补全
 enabled = true
 channel = "llm"
+
+[accessibility]
+# Windows 辅助功能；开启后将所选图片 / 麦克风录音发给所选渠道，不需要云联想开关或 API 密钥
+ocr_enabled = false
+ocr_channel = "youdao_public"
+speech_enabled = false
+speech_channel = "youdao_public"
+speech_language = "zh-CHS"
 
 [status_bar]
 # 桌面上常驻、可拖动的悬浮状态条（Windows）：「中 / 英」格点一下切换模式（开着双拼时还显示方案名）、「，。」格切全角 / 半角标点、齿轮打开设置。

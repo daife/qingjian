@@ -2811,6 +2811,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "qingjian-recognize"
+version = "0.1.1"
+dependencies = [
+ "base64 0.23.1",
+ "reqwest",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "qingjian-release-sign"
 version = "0.1.1"
 dependencies = [
@@ -2866,6 +2876,7 @@ version = "0.1.5-dev"
 dependencies = [
  "dotenvy",
  "embed-manifest",
+ "png",
  "qingjian-core",
  "qingjian-dictionary",
  "qingjian-learning",
@@ -2873,10 +2884,12 @@ dependencies = [
  "qingjian-neural",
  "qingjian-platform",
  "qingjian-predict",
+ "qingjian-recognize",
  "qingjian-render",
  "qingjian-translate",
  "qingjian-update",
  "thiserror 2.0.21",
+ "tokio",
  "toml_edit",
  "tracing",
  "tracing-appender",

@@ -17,6 +17,16 @@ pub struct KeyCombo {
 }
 
 impl KeyCombo {
+    pub const OCR_DEFAULT: Self = Self {
+        modifiers: Modifiers::SHIFT_CONTROL,
+        key: 's',
+    };
+
+    pub const SPEECH_DEFAULT: Self = Self {
+        modifiers: Modifiers::SHIFT_CONTROL,
+        key: 'h',
+    };
+
     pub const TRANSLATE_DEFAULT: Self = Self {
         modifiers: Modifiers {
             option: true,

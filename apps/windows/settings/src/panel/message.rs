@@ -64,6 +64,15 @@ pub(crate) enum Message {
     TestConnection,
     CloudTestDone(Result<String, String>),
 
+    // Windows 辅助功能
+    OcrEnabled(bool),
+    SpeechEnabled(bool),
+    OcrChannel(Option<usize>),
+    SpeechChannel(Option<usize>),
+    SpeechLanguage(Option<usize>),
+    AssistModifiers(bool, Option<usize>),
+    AssistKey(bool, Option<usize>),
+
     // 快捷键页
     PageKeys(Option<usize>),
     ModeExpression(Option<usize>),

@@ -11,6 +11,7 @@ mod menu;
 mod mode;
 mod next;
 mod processor;
+pub(crate) mod recognition;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
