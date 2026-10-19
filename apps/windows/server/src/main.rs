@@ -1,6 +1,6 @@
 //! Server 进程入口：读配置、装配 Engine、在命名管道上服务 TSF DLL。逻辑在库部分，这里只装配与启动。
-//! release 编成 GUI 子系统（登录自启静默跑，日志走文件）；debug 保留控制台看 stderr。
-#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+//! Windows 构建统一使用 GUI 子系统，登录自启与 TSF 拉起都静默运行，日志写入文件。
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::path::{Path, PathBuf};
 

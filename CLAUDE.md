@@ -58,6 +58,7 @@ cargo build --locked -p qingjian-windows-server -p qingjian-windows-tsf -p qingj
 
 - 统一使用默认 `target\debug` 缓存；不要给原生 x64 构建加 `--target`，不要切换 GNU / 其他 Rust 版本、设置 `CARGO_TARGET_DIR` 或临时覆盖 `RUSTFLAGS`，避免重复编译同一套依赖。静态 CRT 已由 `.cargo/config.toml` 配置。
 - 日常保持 debug 增量构建，不在每次构建前 `cargo clean`。仅排查缓存问题或明确要求彻底清理时清空根 `target`；保留 `data\generated` 产品数据及用户级 Cargo 下载缓存。
+- Server 的 debug / release 都使用 Windows GUI 子系统，保证本地覆盖后由 TSF 拉起也不弹终端；诊断看 `%LOCALAPPDATA%\Qingjian\logs\server.<日期>.log`。
 - 联调用 `pwsh -File apps\windows\scripts\test-local.ps1 -SkipBuild` 接上上述产物（前提是已有安装目录与五笔码表）；Server 与 DLL 必须成套更新，DLL 从联调目录注册，避免锁住 `target` 中的产物。部署细节见 `apps/windows/README.md`。
 - 只有需要安装包时才用 `pwsh -File apps\windows\installer\build.ps1`；该脚本统一构建 x64 release、额外的 i686 MSVC DLL 并打包，不另开一套手工打包流程。`-Sign` 仅用于本机签名测试。
 - Windows 壳测试沿用 `QINGJIAN_UIACCESS=0`，执行 `cargo test --locked -p qingjian-windows-server -p qingjian-windows-tsf -p qingjian-windows-settings`；不要在 Windows 直接构建包含 macOS 壳的整个 workspace。

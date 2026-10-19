@@ -275,6 +275,8 @@ IMK 输入法，源码按 `app / host / imk / candidates / menubar / preferences
 
 ## apps/windows
 
+Server 在 Windows 的 debug / release 构建都使用 GUI 子系统，避免 TSF 用 `ShellExecuteW` 自动拉起时弹出控制台。诊断读取 `%LOCALAPPDATA%\Qingjian\logs\server.<日期>.log`，不依赖终端窗口。
+
 一个产品两个 package：`server`（Server 进程：IPC 分派 + Engine + 命名管道 + 自绘候选窗与悬浮状态条）与 `tsf`（TSF 文本服务 DLL，lib 名固定 `qingjian_tsf`），
 外加 `settings`（WinUI 3 设置程序，含「辅码」页）与 `installer`（Inno Setup）。
 设置表单共用 `settings/src/panel/controls.rs` 的 `labeled` / `field`：名称列宽由 `panel::LABEL_WIDTH` 定为 280 DIP，长名称换行，列间距 12 DIP，避免右侧控件遮挡名称。

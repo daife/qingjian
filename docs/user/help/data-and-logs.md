@@ -70,6 +70,8 @@ description: 青简在本机保存的文件及其内容、云联想发送的内�
 
 ## 运行日志
 
+Windows 输入法在后台运行，不会常驻终端窗口；排查问题时查看下面的日志文件。
+
 - **macOS**：「~/Library/Logs/Qingjian/」，文件名「qingjian.log.日期」。
 - **Windows**：「%LOCALAPPDATA%\Qingjian\logs」。引擎（「server.日期.log」）、各应用内的输入法部分（「tsf.日期.log」）与设置程序（「settings.日期.log」）都在这一个目录；
   「设置 → 关于」或「高级」页的「打包日志到桌面」会把整个目录连同配置文件打成一个 zip，反馈时发这个文件即可。
